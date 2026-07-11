@@ -14,6 +14,7 @@ const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const distDir = join(rootDir, 'dist');
 const uploadDir = join(rootDir, 'data', 'uploads');
 const port = Number(process.env.PORT || 3001);
+const host = process.env.HOST || '127.0.0.1';
 const maxUploadBytes = Number(process.env.MAX_UPLOAD_BYTES || 8 * 1024 * 1024);
 
 initDatabase();
@@ -35,8 +36,8 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`Local API running at http://127.0.0.1:${port}`);
+server.listen(port, host, () => {
+  console.log(`Local API running at http://${host}:${port}`);
 });
 
 async function handleApi(req, res, url) {
