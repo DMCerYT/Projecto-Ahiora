@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDatabase } from "../server/db.js";
@@ -544,6 +544,106 @@ test("calendar keeps due dates and payment events without double-counting paymen
     ),
   );
 });
+test("a schedule image is shared by recurring obligations and never counts as payment evidence", () => {
+  const image = {
+    name: "card.png",
+    type: "image/png",
+    data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/8h8AAAAASUVORK5CYII=",
+  };
+  const before = project(demo.project.id).available_cents;
+  const created = store.createBill(demo.owner, {
+    project_id: demo.project.id,
+    name: "Future card",
+    amount: "80",
+    first_due_date: "2027-06-18",
+    recurrence: "monthly",
+    billing_account_id: demo.account.id,
+    image,
+  });
+  assert.equal(created.first_occurrence.due_date, "2027-06-18");
+  assert.equal(created.first_occurrence.status, "unpaid");
+  assert.equal(project(demo.project.id).available_cents, before);
+  const savedImage = store.billImage(demo.owner, created.id);
+  assert.equal(savedImage.mime_type, "image/png");
+  assert.deepEqual(
+    readFileSync(join(uploadDir, savedImage.storage_name)),
+    Buffer.from(image.data, "base64"),
+  );
+  const workspace = store.workspace(demo.owner, "2027-07");
+  const bill = workspace.bills.find((row) => row.id === created.id);
+  assert.equal(bill.image_url, `/api/bills/${created.id}/image`);
+  assert.equal(bill.storage_name, undefined);
+  assert.equal(
+    workspace.occurrences.filter((row) => row.bill_id === bill.id).length,
+    2,
+  );
+  assert.equal(
+    db
+      .prepare("SELECT count(*) AS n FROM bill_images WHERE bill_id = ?")
+      .get(bill.id).n,
+    1,
+  );
+  assert.throws(
+    () =>
+      store.createPayment(
+        demo.owner,
+        created.first_occurrence.id,
+        paymentBody({ amount: "80", reference: {} }),
+      ),
+    code("evidenceRequired"),
+  );
+  store.createPayment(
+    demo.owner,
+    created.first_occurrence.id,
+    paymentBody({ amount: "80", status: "processed" }),
+  );
+  assert.equal(project(demo.project.id).available_cents, before - 8000);
+  assert.equal(
+    store.billImage(demo.owner, created.id).storage_name,
+    savedImage.storage_name,
+  );
+});
+
+test("invalid or oversized bill images roll back the schedule and upload, and SVGs cannot be served inline", () => {
+  const beforeBills = db.prepare("SELECT count(*) AS n FROM bills").get().n;
+  const beforeFiles = readdirSync(uploadDir);
+  for (const image of [
+    {
+      name: "icon.svg",
+      type: "image/svg+xml",
+      data: Buffer.from('<svg onload="alert(1)"/>').toString("base64"),
+    },
+    {
+      name: "pretend.png",
+      type: "image/png",
+      data: Buffer.from("not an image").toString("base64"),
+    },
+    {
+      name: "huge.png",
+      type: "image/png",
+      data: "A".repeat(Math.ceil(store.maxUploadBytes / 3) * 4 + 4),
+    },
+  ]) {
+    assert.throws(
+      () =>
+        store.createBill(demo.owner, {
+          project_id: demo.project.id,
+          name: "Bad image",
+          amount: "1",
+          first_due_date: "2026-10-18",
+          recurrence: "once",
+          image,
+        }),
+      code("invalidImage"),
+    );
+    assert.equal(
+      db.prepare("SELECT count(*) AS n FROM bills").get().n,
+      beforeBills,
+    );
+    assert.deepEqual(readdirSync(uploadDir), beforeFiles);
+  }
+});
+
 test("English and Spanish dictionaries have identical keys", () => {
   const keys = (object, prefix = "") =>
     Object.entries(object)

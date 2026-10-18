@@ -2,9 +2,12 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
-import { BillPaymentEditor } from "../components/FinancialEditors.jsx";
 import {
-  Editor,
+  BillPaymentEditor,
+  BillScheduleEditor,
+} from "../components/FinancialEditors.jsx";
+import { BillImage } from "../components/MobileFinanceUI.jsx";
+import {
   Empty,
   ErrorBox,
   PageTitle,
@@ -29,49 +32,6 @@ export default function BillsPage() {
     value: account.id,
     label: `${account.name} ${account.masked_identifier}`,
   }));
-  const fields = [
-    { name: "name", required: true },
-    {
-      name: "project_id",
-      label: "project",
-      type: "select",
-      options: projects,
-      required: true,
-    },
-    { name: "amount", type: "number", min: "0.01", required: true },
-    { name: "first_due_date", type: "date", required: true },
-    {
-      name: "recurrence",
-      type: "select",
-      options: ["once", "monthly", "weekly", "yearly", "interval_days"],
-      required: true,
-    },
-    {
-      name: "recurrence_day",
-      type: "number",
-      min: 1,
-      max: 31,
-      step: 1,
-      show: (form) => form.recurrence === "monthly",
-      hint: "monthlyHint",
-    },
-    {
-      name: "interval_days",
-      type: "number",
-      min: 1,
-      max: 3650,
-      step: 1,
-      required: true,
-      show: (form) => form.recurrence === "interval_days",
-    },
-    { name: "payee_account_number" },
-    {
-      name: "billing_account_id",
-      label: "billingAccount",
-      type: "select",
-      options: accounts,
-    },
-  ];
   const occurrences = data.occurrences
     .filter(
       (row) =>
@@ -145,7 +105,13 @@ export default function BillsPage() {
                 >
                   <summary>
                     <div>
-                      <strong>{bill.name}</strong>
+                      <strong className="mobileBillRecordTitle">
+                        <BillImage
+                          bill={bill}
+                          className="mobileBillRecordImage"
+                        />
+                        {bill.name}
+                      </strong>
                       <span>
                         {date(row.due_date)} ·{" "}
                         {
@@ -263,7 +229,10 @@ export default function BillsPage() {
             {data.bills.map((bill) => (
               <article key={bill.id} className="listRow">
                 <div>
-                  <strong>{bill.name}</strong>
+                  <strong className="mobileBillRecordTitle">
+                    <BillImage bill={bill} className="mobileBillRecordImage" />
+                    {bill.name}
+                  </strong>
                   <span>
                     {t(`statuses.${bill.recurrence}`)}
                     {bill.recurrence === "monthly"
@@ -292,19 +261,7 @@ export default function BillsPage() {
           </div>
         )}
       </section>
-      {creating && (
-        <Editor
-          title="newBill"
-          fields={fields}
-          initial={{
-            first_due_date: data.today,
-            recurrence: "monthly",
-            interval_days: 30,
-          }}
-          onClose={() => setCreating(false)}
-          onSave={(body) => mutate("bills", body)}
-        />
-      )}
+      {creating && <BillScheduleEditor onClose={() => setCreating(false)} />}
       {paying && (
         <BillPaymentEditor
           row={paying.row}

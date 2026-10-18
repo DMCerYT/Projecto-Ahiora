@@ -29,6 +29,7 @@ export function openDatabase(path = process.env.DB_PATH || defaultDbPath) {
     );
     const migrations = [
       new URL("./migrations/001-domain.sql", import.meta.url),
+      new URL("./migrations/002-bill-images.sql", import.meta.url),
     ];
     migrations.forEach((url, index) => {
       const version = index + 1;

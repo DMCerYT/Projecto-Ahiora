@@ -1,0 +1,17 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="Wallet_fill">
+<path id="Vector 57" d="M20 5C20.5523 5 21 4.55228 21 4C21 3.44772 20.5523 3 20 3V4V5ZM5.50001 4V5L20 5V4V3L5.50001 3L5.50001 4ZM5.50001 9V10H13.5V9V8L5.50001 8V9ZM3.00001 6.5H4.00001C4.00001 5.67157 4.67158 5 5.50001 5V4L5.50001 3C3.56701 3 2.00001 4.567 2.00001 6.5L3.00001 6.5ZM3.00001 6.5L2.00001 6.5C2.00001 8.433 3.56701 10 5.50001 10V9V8C4.67158 8 4.00001 7.32843 4.00001 6.5H3.00001Z" fill="#E4E4E4"/>
+<path id="Vector 59" d="M3 12L3 6.5" stroke-width="2" stroke="#E4E4E4"/>
+<g id="Vector 58">
+<use xlink:href="#stroke0_0_36" fill="#E4E4E4"/>
+<mask id="stroke1_0_36" maskUnits="userSpaceOnUse" x="2" y="8" width="20" height="14" fill="black">
+<rect fill="white" x="2" y="8" width="20" height="14"/>
+<use xlink:href="#stroke0_0_36"/>
+</mask>
+<path d="M5 21L19 21C19.9428 21 20.4142 21 20.7071 20.7071C21 20.4142 21 19.9428 21 19V18H18C16.3431 18 15 16.6569 15 15C15 13.3431 16.3431 12 18 12H21V11C21 10.0572 21 9.58579 20.7071 9.29289C20.4142 9 19.9428 9 19 9L3 9L3 19C3 19.9428 3 20.4142 3.29289 20.7071C3.58579 21 4.05719 21 5 21Z" stroke-width="2" stroke="#E4E4E4" mask="url(#stroke1_0_36)"/>
+</g>
+</g>
+<defs>
+<path id="stroke0_0_36" d="M19 21L5 21C4.05719 21 3.58579 21 3.29289 20.7071C3 20.4142 3 19.9428 3 19L3 9L19 9C19.9428 9 20.4142 9 20.7071 9.29289C21 9.58579 21 10.0572 21 11V12H18C16.3431 12 15 13.3431 15 15C15 16.6569 16.3431 18 18 18H21V19C21 19.9428 21 20.4142 20.7071 20.7071C20.4142 21 19.9428 21 19 21Z"/>
+</defs>
+</svg>

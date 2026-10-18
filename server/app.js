@@ -240,6 +240,22 @@ export function createApp({
         });
         return;
       }
+      const billImageMatch = url.pathname.match(
+        /^\/api\/bills\/([^/]+)\/image$/,
+      );
+      if (req.method === "GET" && billImageMatch) {
+        const file = store.billImage(user, billImageMatch[1]),
+          path = join(uploadDir, file.storage_name);
+        if (!existsSync(path)) throw new DomainError("notFound", 404);
+        res.writeHead(200, {
+          "Content-Type": file.mime_type,
+          "Content-Length": file.size_bytes,
+          "Content-Disposition": "inline",
+          "Cross-Origin-Resource-Policy": "same-origin",
+        });
+        createReadStream(path).pipe(res);
+        return;
+      }
       const fileMatch = url.pathname.match(/^\/api\/attachments\/([^/]+)$/);
       if (req.method === "GET" && fileMatch) {
         const file = store.attachment(user, fileMatch[1]),

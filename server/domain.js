@@ -470,9 +470,79 @@ export class FinanceStore {
           interval,
           accountId,
         );
+      if (body.image) this.billImageRaw(user, id, body.image);
+      // The first payment can be recorded immediately, even for a schedule outside
+      // the calendar's generated horizon. Creating this obligation does not pay it.
+      const occurrenceId = randomUUID();
+      this.db
+        .prepare(
+          "INSERT INTO bill_occurrences (id, business_id, bill_id, due_date, amount_cents) VALUES (?, ?, ?, ?, ?)",
+        )
+        .run(occurrenceId, user.business_id, id, first, amount);
       this.audit(user, "bill.created", id);
-      return { id };
+      return {
+        id,
+        first_occurrence: this.row("bill_occurrences", occurrenceId, user),
+      };
     });
+  }
+  billImageRaw(user, billId, file) {
+    requireThat(
+      this.uploadDir && typeof file.data === "string",
+      "invalidImage",
+    );
+    const raw = file.data.includes(",")
+      ? file.data.slice(file.data.indexOf(",") + 1)
+      : file.data;
+    requireThat(
+      raw.length <= Math.ceil(this.maxUploadBytes / 3) * 4 &&
+        /^[A-Za-z0-9+/]*={0,2}$/.test(raw),
+      "invalidImage",
+    );
+    const buffer = Buffer.from(raw, "base64");
+    const png = buffer
+      .subarray(0, 8)
+      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const jpeg = buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255;
+    const webp =
+      buffer.toString("ascii", 0, 4) === "RIFF" &&
+      buffer.toString("ascii", 8, 12) === "WEBP";
+    const mime = png
+      ? "image/png"
+      : jpeg
+        ? "image/jpeg"
+        : webp
+          ? "image/webp"
+          : null;
+    requireThat(
+      mime &&
+        file.type === mime &&
+        buffer.length > 0 &&
+        buffer.length <= this.maxUploadBytes,
+      "invalidImage",
+    );
+    const name = requiredText(file.name, 200).replace(/[\r\n]/g, "_");
+    const storageName = `${randomUUID()}.bin`,
+      path = join(this.uploadDir, storageName);
+    mkdirSync(this.uploadDir, { recursive: true, mode: 0o700 });
+    this.newFiles.push(path);
+    writeFileSync(path, buffer, { mode: 0o600, flag: "wx" });
+    this.db
+      .prepare(
+        "INSERT INTO bill_images (bill_id, business_id, original_name, mime_type, size_bytes, storage_name) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(billId, user.business_id, name, mime, buffer.length, storageName);
+  }
+  billImage(user, billId) {
+    const bill = this.row("bills", billId, user);
+    this.project(user, bill.project_id);
+    const image = this.db
+      .prepare(
+        "SELECT * FROM bill_images WHERE bill_id = ? AND business_id = ?",
+      )
+      .get(billId, user.business_id);
+    requireThat(image, "notFound", 404);
+    return image;
   }
   pauseBill(user, id) {
     this.editor(user);
@@ -880,9 +950,17 @@ export class FinanceStore {
     const transactionIds = new Set(
       transactions.map((transaction) => transaction.id),
     );
-    const bills = all("bills").filter((bill) =>
-      projectIds.has(bill.project_id),
+    const imageBills = new Set(
+      all("bill_images").map((image) => image.bill_id),
     );
+    const bills = all("bills")
+      .filter((bill) => projectIds.has(bill.project_id))
+      .map((bill) => ({
+        ...bill,
+        image_url: imageBills.has(bill.id)
+          ? `/api/bills/${bill.id}/image`
+          : null,
+      }));
     const billIds = new Set(bills.map((bill) => bill.id));
     const today = this.today(user),
       soon = addDays(today, 7);

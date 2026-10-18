@@ -4,12 +4,22 @@ import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
 import { unpaidBillChoices } from "../../shared/paymentChoices.js";
 import { Editor } from "./DomainUI.jsx";
+import { useMobile } from "../lib/useMobile.js";
+import {
+  MobileTransactionFlow,
+  MobileBillPaymentFlow,
+  MobileBillScheduleFlow,
+  MobileBillPicker,
+} from "./MobileFinancialFlows.jsx";
 
 export function TransactionEditor({ projectId = "", onClose }) {
   const { data, mutate } = useWorkspace();
+  const mobile = useMobile();
   const projects = data.projects
     .filter((project) => project.status !== "archived")
     .map((project) => ({ value: project.id, label: project.name }));
+  if (mobile)
+    return <MobileTransactionFlow projectId={projectId} onClose={onClose} />;
   return (
     <Editor
       title="newTransaction"
@@ -47,10 +57,13 @@ export function BillPaymentEditor({
   showBillName = false,
 }) {
   const { data, mutate, date } = useWorkspace();
+  const mobile = useMobile();
   const accounts = data.billing_accounts.map((account) => ({
     value: account.id,
     label: `${account.name} ${account.masked_identifier}`,
   }));
+  if (mobile)
+    return <MobileBillPaymentFlow row={row} bill={bill} onClose={onClose} />;
   return (
     <Editor
       title="recordPayment"
@@ -88,6 +101,15 @@ export function BillPaymentEditor({
 }
 
 export function BillPaymentPicker({ onClose }) {
+  const mobile = useMobile();
+  if (mobile)
+    return (
+      <MobileBillPicker onClose={onClose} ScheduleEditor={BillScheduleEditor} />
+    );
+  return <DesktopBillPaymentPicker onClose={onClose} />;
+}
+
+function DesktopBillPaymentPicker({ onClose }) {
   const { t } = useLanguage(),
     { data, money, date } = useWorkspace();
   const navigate = useNavigate(),
@@ -165,5 +187,75 @@ export function BillPaymentPicker({ onClose }) {
         </button>
       </form>
     </dialog>
+  );
+}
+
+export function BillScheduleEditor({ onClose }) {
+  const { data, mutate } = useWorkspace();
+  const mobile = useMobile();
+  const projects = data.projects
+    .filter((project) => project.status !== "archived")
+    .map((project) => ({ value: project.id, label: project.name }));
+  const accounts = data.billing_accounts.map((account) => ({
+    value: account.id,
+    label: `${account.name} ${account.masked_identifier}`,
+  }));
+  const fields = [
+    { name: "name", required: true, maxLength: mobile ? 160 : undefined },
+    {
+      name: "project_id",
+      label: "project",
+      type: "select",
+      options: projects,
+      required: true,
+    },
+    { name: "amount", type: "number", min: "0.01", required: true },
+    { name: "first_due_date", type: "date", required: true },
+    {
+      name: "recurrence",
+      type: "select",
+      options: ["once", "monthly", "weekly", "yearly", "interval_days"],
+      required: true,
+    },
+    {
+      name: "recurrence_day",
+      type: "number",
+      min: 1,
+      max: 31,
+      step: 1,
+      show: (form) => form.recurrence === "monthly",
+      hint: "monthlyHint",
+    },
+    {
+      name: "interval_days",
+      type: "number",
+      min: 1,
+      max: 3650,
+      step: 1,
+      required: true,
+      show: (form) => form.recurrence === "interval_days",
+    },
+    { name: "payee_account_number" },
+    {
+      name: "billing_account_id",
+      label: "billingAccount",
+      type: "select",
+      options: accounts,
+    },
+  ];
+  if (mobile)
+    return <MobileBillScheduleFlow fields={fields} onClose={onClose} />;
+  return (
+    <Editor
+      title="newBill"
+      fields={fields}
+      initial={{
+        first_due_date: data.today,
+        recurrence: "monthly",
+        interval_days: 30,
+      }}
+      onClose={onClose}
+      onSave={(body) => mutate("bills", body)}
+    />
   );
 }

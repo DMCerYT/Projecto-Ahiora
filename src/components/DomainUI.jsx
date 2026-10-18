@@ -82,6 +82,7 @@ export function Fields({ fields, form, setForm }) {
             value: form[field.name] ?? "",
             required: field.required,
             disabled: field.disabled,
+            placeholder: field.placeholder ? t(field.placeholder) : undefined,
             onChange: (event) =>
               setForm((old) => ({ ...old, [field.name]: event.target.value })),
           };

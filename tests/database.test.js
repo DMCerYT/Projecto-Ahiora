@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -11,7 +11,17 @@ test("versioned migrations are idempotent and startup preserves existing data", 
   const temp = mkdtempSync(join(tmpdir(), "ahiora-migrations-")),
     path = join(temp, "finance.sqlite");
   try {
-    let db = openDatabase(path);
+    // Start with an existing version-one database, then apply new migrations.
+    let db = new DatabaseSync(path);
+    db.exec(
+      readFileSync(
+        new URL("../server/migrations/001-domain.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    db.exec(
+      "PRAGMA foreign_keys = ON; CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY); INSERT INTO schema_migrations VALUES (1)",
+    );
     const demo = seedDemo(db, { today: "2026-10-18" });
     db.close();
     db = openDatabase(path);
@@ -24,7 +34,7 @@ test("versioned migrations are idempotent and startup preserves existing data", 
       );
       assert.equal(
         db.prepare("SELECT count(*) AS n FROM schema_migrations").get().n,
-        1,
+        2,
       );
       assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
       assert.throws(() => seedDemo(db), /empty database/);

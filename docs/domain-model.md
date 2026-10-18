@@ -18,6 +18,7 @@ classDiagram
     Project "1" -- "0..*" Transaction : records
     Project "1" -- "0..*" Bill : allocated to
     Bill "1" -- "1..*" BillOccurrence : schedules
+    Bill "1" -- "0..1" BillImage : illustrated by
     BillOccurrence "1" -- "0..1" Payment : settled by
     Payment "0..1" -- "0..1" Transaction : recorded as
     Business "1" -- "0..*" BillingAccount : maintains

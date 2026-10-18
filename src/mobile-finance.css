@@ -1,0 +1,529 @@
+@media (max-width: 640px) {
+  .mobileFinanceDialog {
+    position: fixed;
+    inset: calc(131px + env(safe-area-inset-top, 0px)) 0 auto;
+    width: min(334px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    height: 579px;
+    max-height: calc(
+      100dvh - 145px - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    );
+    margin: 0 auto;
+    padding: 0;
+    overflow: hidden;
+    border: 4px solid #2c86e0;
+    border-radius: 15px;
+    background: #b1c6db;
+    color: #000;
+    font:
+      400 20px/1.3 "Ahiora Gabarito",
+      sans-serif;
+  }
+  .mobileFinanceDialog::backdrop {
+    top: calc(117px + env(safe-area-inset-top, 0px));
+    background: rgb(211 211 211 / 45%);
+    backdrop-filter: blur(3px);
+  }
+  .mobileFinanceScroll {
+    height: 100%;
+    padding: 13px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .mobileFinanceClose {
+    position: absolute;
+    z-index: 3;
+    top: 7px;
+    right: 9px;
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: #eb3c3c;
+  }
+  .mobileFinanceForm {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 100%;
+  }
+  .mobileFinanceForm > * {
+    flex-shrink: 0;
+  }
+  .mobileFinanceHero {
+    position: relative;
+    height: 180px;
+  }
+  .mobileFinanceHero h2 {
+    position: relative;
+    width: 166px;
+    margin: 0 0 0 9px;
+    font:
+      400 32px/38px "Ahiora Gabarito",
+      sans-serif;
+    overflow-wrap: normal;
+  }
+  .mobileFinanceHero h2:focus {
+    outline: none;
+  }
+  .mobileFinanceMascot {
+    position: absolute;
+    pointer-events: none;
+  }
+  .mobileFinanceHero.transaction .mobileFinanceMascot {
+    top: 13px;
+    right: 21px;
+    width: 197px;
+    height: 253px;
+  }
+  .mobileFinanceHero.transaction .mobileFinanceMascot img {
+    width: 197px;
+    height: 253px;
+    object-fit: cover;
+  }
+  .mobileFinanceHero.bill .mobileFinanceMascot {
+    top: -5px;
+    right: 49px;
+    width: 116px;
+    height: 255px;
+    overflow: hidden;
+  }
+  .mobileFinanceHero.bill .mobileFinanceMascot img {
+    position: absolute;
+    top: -0.1%;
+    width: 106.9%;
+    height: 105.71%;
+    max-width: none;
+  }
+  .mobileMascotFade {
+    position: absolute;
+    top: 173px;
+    left: 14px;
+    width: min(283px, calc(100% - 14px));
+    height: 125px;
+    background: rgb(255 255 255 / 1%);
+    backdrop-filter: blur(5px);
+    pointer-events: none;
+  }
+  .mobileFinanceHero.compact {
+    height: 100px;
+  }
+  .mobileFinanceHero.compact h2 {
+    width: calc(100% - 65px);
+    margin-left: 0;
+    padding-top: 5px;
+    font-size: 28px;
+    line-height: 32px;
+  }
+  .mobileFinanceHero.compact .mobileFinanceMascot {
+    top: 2px;
+    right: 28px;
+    width: 44px;
+    height: 96px;
+    opacity: 0.35;
+  }
+  .mobileFinanceHero.compact.transaction .mobileFinanceMascot {
+    width: 75px;
+  }
+  .mobileFinanceHero.compact.transaction .mobileFinanceMascot img {
+    width: 75px;
+    height: 96px;
+  }
+  .mobileFinanceDialog .formGrid {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    margin: 0;
+  }
+  .mobileFinanceDialog label,
+  .mobileTransactionTypes legend {
+    min-width: 0;
+    gap: 6px;
+    color: #000;
+    font:
+      400 24px/29px "Ahiora Gabarito",
+      sans-serif;
+  }
+  .mobileFinanceDialog input,
+  .mobileFinanceDialog select,
+  .mobileFinanceDialog textarea {
+    min-width: 0;
+    min-height: 60px;
+    padding: 11px 10px;
+    border: 4px solid #2c86e0;
+    border-radius: 10px;
+    background: #e4e4e4;
+    color: #000;
+    font:
+      400 24px/29px "Ahiora Gabarito",
+      sans-serif;
+  }
+  .mobileFinanceDialog select {
+    appearance: none;
+    padding-right: 45px;
+    background-image: url("./assets/mobile/finance/expand.svg");
+    background-repeat: no-repeat;
+    background-position: right 11px center;
+    background-size: 36px 36px;
+    text-overflow: ellipsis;
+  }
+  .mobileFinanceDialog input::placeholder {
+    color: #738999;
+    opacity: 1;
+  }
+  .mobileFinanceDialog input[type="datetime-local"] {
+    font-size: 18px;
+  }
+  .mobileFinanceDialog input[type="file"] {
+    min-height: 50px;
+    font-size: 14px;
+    line-height: 22px;
+  }
+  .mobileFinanceDialog input:disabled {
+    opacity: 0.75;
+  }
+  .mobileFinanceDialog .fieldHint {
+    margin: 6px 0;
+    color: #374756;
+    font:
+      400 15px/20px "Ahiora Gabarito",
+      sans-serif;
+  }
+  .mobileTransactionTypes {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .mobileTransactionTypes legend {
+    margin-bottom: 6px;
+    padding: 0;
+  }
+  .mobileTransactionTypes > div {
+    display: grid;
+    grid-template-columns: 5fr 2fr 5fr;
+  }
+  .mobileType {
+    position: relative;
+    display: block;
+  }
+  .mobileType input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    min-height: 0;
+    height: 1px;
+    padding: 0;
+    opacity: 0;
+  }
+  .mobileType > span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 60px;
+    border: 4px solid;
+    border-inline-width: 2px;
+    color: #e4e4e4;
+    font-size: 14px;
+    line-height: 17px;
+    cursor: pointer;
+  }
+  .mobileType.income > span {
+    border-color: #006616;
+    border-left-width: 4px;
+    border-radius: 10px 0 0 10px;
+    background: #29ad39;
+  }
+  .mobileType.refund > span {
+    border-color: #e0b32c;
+    background: #e7ca76;
+    font-size: 10px;
+    line-height: 12px;
+  }
+  .mobileType.expense > span {
+    border-color: #ac3030;
+    border-right-width: 4px;
+    border-radius: 0 10px 10px 0;
+    background: #d36565;
+  }
+  .mobileType input:checked + span {
+    box-shadow: inset 0 0 0 2px white;
+    font-weight: 700;
+  }
+  .mobileType input:focus-visible + span {
+    outline: 3px solid #0c5599;
+    outline-offset: 3px;
+  }
+  .mobileFinanceButton {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: min(238px, 100%);
+    min-height: 60px;
+    margin: 0 auto;
+    padding: 9px;
+    border: 6px solid #2c86e0;
+    border-radius: 12px;
+    background: #2c86e0;
+    color: white;
+    font:
+      600 24px/29px "Ahiora Inter",
+      sans-serif;
+    text-align: center;
+  }
+  .mobileFinanceButton span {
+    min-width: 0;
+  }
+  .mobileFinanceButton img {
+    flex-shrink: 0;
+    margin: -3px 0;
+  }
+  .mobileFinanceButton.green {
+    border-color: #006616;
+    background: #29ad39;
+  }
+  .mobileFinanceButton.secondary {
+    border-color: #0c5599;
+    background: #e4e4e4;
+    color: #0c5599;
+  }
+  .mobileFinanceButton.danger {
+    border-color: #ac3030;
+    background: #eb3c3c;
+  }
+  .mobileFinanceStepActions {
+    display: grid;
+    gap: 8px;
+  }
+  .mobileFinanceBack {
+    justify-self: center;
+    min-height: 44px;
+    padding: 8px 20px;
+    border: 0;
+    background: transparent;
+    color: #0c5599;
+    text-decoration: underline;
+  }
+  .mobileFinanceProgress {
+    margin: 0 0 6px;
+    color: #374756;
+    font-size: 15px;
+  }
+  .mobileFinanceEvidence,
+  .mobileBillImageField {
+    display: grid;
+    gap: 10px;
+  }
+  .mobileFinanceEvidence h3 {
+    margin: 0;
+    font-size: 22px;
+  }
+  .mobileFileList {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mobileFileList li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 16px;
+    overflow-wrap: anywhere;
+  }
+  .mobileFileList button,
+  .mobileImagePreview button {
+    flex-shrink: 0;
+    min-height: 44px;
+    border: 0;
+    border-radius: 6px;
+    color: #0c5599;
+    background: #e4e4e4;
+    font-size: 15px;
+  }
+  .mobileBillPicker .mobileFinanceScroll {
+    padding: 11px;
+  }
+  .mobileBillPicker .mobileFinanceHero {
+    height: 181px;
+  }
+  .mobileBillPicker .mobileFinanceHero h2 {
+    margin-left: 11px;
+    padding-top: 3px;
+  }
+  .mobileBillPicker .mobileFinanceMascot {
+    top: -3px;
+    right: 51px;
+  }
+  .mobileBillPicker .mobileMascotFade {
+    top: 175px;
+    left: 16px;
+  }
+  .mobileBillPickerCaption {
+    position: relative;
+    margin: 3px 0 0;
+    font-size: 24px;
+    line-height: 29px;
+    text-align: center;
+  }
+  .mobileBillChoices {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    height: 256px;
+    padding: 5px 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 4px solid #2c86e0;
+    border-radius: 10px;
+    background: #e4e4e4;
+    scrollbar-width: thin;
+  }
+  .mobileBillChoice {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 7px;
+    min-height: 60px;
+    padding: 3px 9px;
+    border: 4px solid #2c86e0;
+    border-radius: 7px;
+    background: #d9d9d9;
+    color: black;
+    text-align: left;
+  }
+  .mobileBillChoice > span:last-child,
+  .mobilePaymentSummary > div {
+    display: grid;
+    min-width: 0;
+  }
+  .mobileBillChoice strong {
+    overflow: hidden;
+    font:
+      400 24px/29px "Ahiora Gabarito",
+      sans-serif;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobileBillChoice small {
+    color: #374756;
+    font-size: 14px;
+    line-height: 17px;
+  }
+  .mobileBillImage {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: white;
+  }
+  .mobileBillImage img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+  }
+  .mobilePaymentSummary {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 7px;
+    background: #e4e4e4;
+    overflow-wrap: anywhere;
+  }
+  .mobileBillRecordTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mobilePaymentSummary span {
+    font-size: 14px;
+    color: #374756;
+  }
+  .mobileImagePreview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+  }
+  .mobileImagePreview img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+  .mobileDiscard {
+    width: min(334px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    padding: 20px;
+    border: 4px solid #2c86e0;
+    border-radius: 15px;
+    background: #b1c6db;
+    color: black;
+    font:
+      400 20px/1.3 "Ahiora Gabarito",
+      sans-serif;
+  }
+  .mobileDiscard::backdrop {
+    background: rgb(12 85 153 / 25%);
+  }
+  .mobileDiscard h2 {
+    margin: 0;
+    font-size: 28px;
+  }
+  .mobileDiscard button {
+    margin-top: 12px;
+    font-size: 20px;
+  }
+  html[lang="es"] .mobileFinanceHero:not(.compact) h2 {
+    font-size: 29px;
+    line-height: 34px;
+  }
+  html[lang="es"] .mobileTransactionTypes > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  html[lang="es"] .mobileType.refund > span {
+    font-size: 14px;
+    line-height: 17px;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobileFinanceHero:not(.compact) h2,
+  html[lang="es"] .mobileFinanceHero:not(.compact) h2 {
+    width: 150px;
+    font-size: 26px;
+    line-height: 30px;
+  }
+  .mobileFinanceHero:not(.compact).transaction .mobileFinanceMascot {
+    top: 25px;
+    right: 6px;
+    width: 165px;
+    height: 212px;
+  }
+  .mobileFinanceHero:not(.compact).transaction .mobileFinanceMascot img {
+    width: 165px;
+    height: 212px;
+  }
+  .mobileBillPicker .mobileFinanceMascot {
+    right: 12px;
+  }
+}

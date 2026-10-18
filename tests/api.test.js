@@ -108,6 +108,75 @@ test("employee finance mutations are denied while assigned project comments are 
     [demo.project.id],
   );
 });
+test("bill images are served only to authorized project members with a validated image content type", async () => {
+  const image = {
+    name: "bill.png",
+    type: "image/png",
+    data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/8h8AAAAASUVORK5CYII=",
+  };
+  const created = await request("/api/bills", {
+    method: "POST",
+    body: {
+      name: "Private card",
+      project_id: demo.second.id,
+      amount: "25",
+      first_due_date: "2027-06-18",
+      recurrence: "monthly",
+      image,
+    },
+  });
+  assert.equal(created.status, 201);
+  const { id, first_occurrence } = await created.json();
+  assert.equal(first_occurrence.status, "unpaid");
+  const response = await request(`/api/bills/${id}/image`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/png");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.deepEqual(
+    Buffer.from(await response.arrayBuffer()),
+    Buffer.from(image.data, "base64"),
+  );
+  assert.equal(
+    (await request(`/api/bills/${id}/image`, { role: "none" })).status,
+    401,
+  );
+  assert.equal(
+    (await request(`/api/bills/${id}/image`, { role: "employee" })).status,
+    404,
+  );
+  const foreign = await request("/api/auth/signup", {
+    method: "POST",
+    body: {
+      email: "image-outsider@example.com",
+      password: "DemoPass123!",
+      name: "Other owner",
+      business_name: "Other business",
+    },
+  });
+  const cookie = foreign.headers.get("set-cookie").split(";")[0];
+  assert.equal(
+    (await request(`/api/bills/${id}/image`, { headers: { Cookie: cookie } }))
+      .status,
+    404,
+  );
+  const employeeBill = await request("/api/bills", {
+    method: "POST",
+    body: {
+      name: "Assigned card",
+      project_id: demo.project.id,
+      amount: "25",
+      first_due_date: "2027-06-18",
+      recurrence: "once",
+      image,
+    },
+  }).then((res) => res.json());
+  assert.equal(
+    (await request(`/api/bills/${employeeBill.id}/image`, { role: "employee" }))
+      .status,
+    200,
+  );
+});
+
 test("missing references are rejected through the HTTP API", async () => {
   const response = await request("/api/transactions", {
     method: "POST",
