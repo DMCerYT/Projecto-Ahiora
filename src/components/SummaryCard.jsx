@@ -1,12 +1,8 @@
-import { formatCurrency } from '../utils/formatters.js';
-
-function SummaryCard({ label, value, tone = 'neutral' }) {
+export default function SummaryCard({ label, value, tone = "neutral" }) {
   return (
-    <section className={`summaryCard ${tone}`}>
+    <article className={`summaryCard ${tone}`}>
       <span>{label}</span>
-      <strong>{typeof value === 'number' ? formatCurrency(value) : value}</strong>
-    </section>
+      <strong>{value}</strong>
+    </article>
   );
 }
-
-export default SummaryCard;

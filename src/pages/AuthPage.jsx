@@ -1,108 +1,95 @@
-import { useState } from 'react';
-import { useLanguage } from '../i18n/LanguageContext.jsx';
-import { apiRequest } from '../lib/apiClient.js';
+import { useState } from "react";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { apiRequest } from "../lib/apiClient.js";
+import { ErrorBox, Fields } from "../components/DomainUI.jsx";
 
-function AuthPage({ onAuth }) {
+export default function AuthPage({ onAuth, githubEnabled }) {
   const { language, setLanguage, t } = useLanguage();
-  const [mode, setMode] = useState('signIn');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-
-  async function handleSubmit(event) {
+  const [signup, setSignup] = useState(false),
+    [form, setForm] = useState({}),
+    [error, setError] = useState(null),
+    [saving, setSaving] = useState(false);
+  async function submit(event) {
     event.preventDefault();
-    setLoading(true);
-    setError('');
-    setMessage('');
-
+    setSaving(true);
+    setError(null);
     try {
-      const endpoint = mode === 'signIn' ? '/api/auth/login' : '/api/auth/signup';
-      const { user } = await apiRequest(endpoint, {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-
-      setMessage(mode === 'signIn' ? t('signedIn') : t('accountCreated'));
+      const { user } = await apiRequest(
+        `/api/auth/${signup ? "signup" : "login"}`,
+        {
+          method: "POST",
+          body: JSON.stringify({ ...form, preferred_language: language }),
+        },
+      );
       onAuth(user);
-    } catch (authError) {
-      setError(authError.message);
+    } catch (next) {
+      setError(next);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }
-
-  function toggleMode() {
-    setMode((current) => (current === 'signIn' ? 'signUp' : 'signIn'));
-    setError('');
-    setMessage('');
-  }
-
-  function oauthMessage() {
-    const params = new URLSearchParams(window.location.search);
-    const oauthStatus = params.get('oauth');
-    if (!oauthStatus) return null;
-
-    return (
-      <div className="errorBox">
-        {oauthStatus === 'no-email' ? t('oauthEmailMissing') : t('oauthUnavailable')}
-      </div>
-    );
-  }
-
   return (
     <main className="authPage">
-      <form className="authPanel" onSubmit={handleSubmit}>
+      <form className="authPanel" onSubmit={submit}>
         <div className="authTop">
           <div>
-            <p className="eyebrow">{t('financialDashboard')}</p>
-            <h1>{mode === 'signIn' ? t('signIn') : t('signUp')}</h1>
+            <p className="eyebrow">Ahiora</p>
+            <h1>{t(signup ? "signUp" : "signIn")}</h1>
           </div>
           <label className="languageControl compact">
-            {t('language')}
-            <select value={language} onChange={(event) => setLanguage(event.target.value)}>
-              <option value="en">{t('english')}</option>
-              <option value="es">{t('spanish')}</option>
+            {t("language")}
+            <select
+              value={language}
+              onChange={(event) => setLanguage(event.target.value)}
+            >
+              <option value="en">English</option>
+              <option value="es">Español</option>
             </select>
           </label>
         </div>
-
-        {oauthMessage()}
-        {error && <div className="errorBox">{error}</div>}
-        {message && <div className="successBox">{message}</div>}
-
-        <label>
-          {t('email')}
-          <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
-        </label>
-
-        <label>
-          {t('password')}
-          <input
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            type="password"
-            minLength="8"
-            required
-          />
-          {mode === 'signUp' && <span className="fieldHint">{t('passwordHint')}</span>}
-        </label>
-
-        <button className="primaryButton" type="submit" disabled={loading}>
-          {loading ? t('pleaseWait') : mode === 'signIn' ? t('signIn') : t('signUp')}
+        <p className="mutedText">{t("tagline")}</p>
+        <ErrorBox error={error} />
+        {new URLSearchParams(window.location.search).has("oauth") && (
+          <ErrorBox error={{ code: "oauthUnavailable" }} />
+        )}
+        <Fields
+          fields={[
+            ...(signup
+              ? [
+                  { name: "name", required: true },
+                  { name: "business_name", required: true },
+                ]
+              : []),
+            { name: "email", type: "email", required: true },
+            {
+              name: "password",
+              type: "password",
+              required: true,
+              hint: "passwordHint",
+            },
+          ]}
+          form={form}
+          setForm={setForm}
+        />
+        <button className="primaryButton" disabled={saving}>
+          {t(saving ? "saving" : signup ? "signUp" : "signIn")}
         </button>
-
-        <button className="secondaryActionButton" type="button" onClick={() => (window.location.href = '/api/auth/github')}>
-          {t('continueWithGithub')}
-        </button>
-
-        <button className="linkButton" type="button" onClick={toggleMode}>
-          {mode === 'signIn' ? t('needAccount') : t('alreadyHaveAccount')}
+        {githubEnabled && (
+          <a className="smallButton" href="/api/auth/github">
+            {t("github")}
+          </a>
+        )}
+        <button
+          className="linkButton"
+          type="button"
+          onClick={() => {
+            setSignup(!signup);
+            setError(null);
+          }}
+        >
+          {t(signup ? "alreadyAccount" : "newAccount")}
         </button>
       </form>
     </main>
   );
 }
-
-export default AuthPage;

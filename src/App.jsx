@@ -1,66 +1,98 @@
-import { useEffect, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import Layout from './components/Layout.jsx';
-import { entityConfigs } from './config/entities.js';
-import { useLanguage } from './i18n/LanguageContext.jsx';
-import { apiRequest } from './lib/apiClient.js';
-import AuthPage from './pages/AuthPage.jsx';
-import BillsPage from './pages/BillsPage.jsx';
-import CrudPage from './pages/CrudPage.jsx';
-import Dashboard from './pages/Dashboard.jsx';
+import { useEffect, useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useLanguage } from "./i18n/LanguageContext.jsx";
+import { apiRequest } from "./lib/apiClient.js";
+import { WorkspaceProvider, useWorkspace } from "./lib/WorkspaceContext.jsx";
+import Layout from "./components/Layout.jsx";
+import { ErrorBox } from "./components/DomainUI.jsx";
+import AuthPage from "./pages/AuthPage.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
+import { ProjectsPage, ProjectDetails } from "./pages/ProjectsPage.jsx";
+import TransactionsPage from "./pages/TransactionsPage.jsx";
+import BillsPage from "./pages/BillsPage.jsx";
+import {
+  ContractorsPage,
+  TeamPage,
+  SettingsPage,
+} from "./pages/ManagementPages.jsx";
 
-function App() {
-  const { t } = useLanguage();
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-
+export default function App() {
+  const { t, setLanguage } = useLanguage();
+  const [user, setUser] = useState(null),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(null),
+    [githubEnabled, setGithubEnabled] = useState(false);
   useEffect(() => {
-    apiRequest('/api/session')
-      .then(({ user }) => {
-        setSession(user ? { user } : null);
+    apiRequest("/api/session")
+      .then((session) => {
+        setUser(session.user);
+        setGithubEnabled(session.github_enabled);
+        if (session.user) setLanguage(session.user.preferred_language);
       })
-      .catch(() => {
-        setSession(null);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .catch(setError)
+      .finally(() => setLoading(false));
   }, []);
-
-  async function handleSignOut() {
-    await apiRequest('/api/auth/logout', { method: 'POST' });
-    setSession(null);
-  }
-
-  if (loading) {
-    return <div className="fullPageState">{t('loadingApp')}</div>;
-  }
-
-  if (!session) {
-    return <AuthPage onAuth={(user) => setSession({ user })} />;
-  }
-
+  if (loading) return <div className="fullPageState">{t("loading")}</div>;
+  if (error)
+    return (
+      <div className="authPage">
+        <ErrorBox error={error} />
+        <button onClick={() => window.location.reload()}>{t("retry")}</button>
+      </div>
+    );
+  if (!user)
+    return (
+      <AuthPage
+        githubEnabled={githubEnabled}
+        onAuth={(next) => {
+          setUser(next);
+          setLanguage(next.preferred_language);
+        }}
+      />
+    );
   return (
-    <Layout user={session.user} onSignOut={handleSignOut}>
+    <WorkspaceProvider key={user.id} user={user} setUser={setUser}>
+      <WorkspaceApp
+        onSignOut={async () => {
+          await apiRequest("/api/auth/logout", { method: "POST" });
+          setUser(null);
+        }}
+      />
+    </WorkspaceProvider>
+  );
+}
+function WorkspaceApp({ onSignOut }) {
+  const { t } = useLanguage(),
+    { data, error, loading, load, editor } = useWorkspace();
+  if (!data)
+    return (
+      <main className="mainContent">
+        <ErrorBox error={error} />
+        {loading ? (
+          t("loading")
+        ) : (
+          <button onClick={() => load().catch(() => {})}>{t("retry")}</button>
+        )}
+      </main>
+    );
+  return (
+    <Layout onSignOut={onSignOut}>
+      <ErrorBox error={error} />
       <Routes>
-        <Route path="/" element={<Dashboard user={session.user} />} />
-        {Object.keys(entityConfigs).map((entityKey) => (
-          <Route
-            key={entityKey}
-            path={`/${entityKey}`}
-            element={
-              entityKey === 'bills' ? (
-                <BillsPage user={session.user} />
-              ) : (
-                <CrudPage entityKey={entityKey} user={session.user} />
-              )
-            }
-          />
-        ))}
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/:id" element={<ProjectDetails />} />
+        <Route path="/transactions" element={<TransactionsPage />} />
+        <Route path="/bills" element={<BillsPage />} />
+        <Route path="/contractors" element={<ContractorsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        {editor && (
+          <>
+            <Route path="/team" element={<TeamPage />} />
+          </>
+        )}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
   );
 }
-
-export default App;

@@ -1,0 +1,317 @@
+@font-face {
+  font-family: "Ahiora Koulen";
+  src: url("./assets/fonts/koulen.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Ahiora Metrophobic";
+  src: url("./assets/fonts/metrophobic.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Ahiora Inter";
+  src: url("./assets/fonts/inter.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+.mobilePreferences {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .appShell > .sidebar,
+  .authTop > .languageControl {
+    display: none;
+  }
+  .appShell {
+    background: #d9d9d9;
+  }
+  .appShell > .mainContent {
+    padding-top: calc(137px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(173px + env(safe-area-inset-bottom, 0px));
+  }
+  .appShell > .mainContent[inert] {
+    filter: blur(3px);
+  }
+  .mobileHeader {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 60;
+    padding-top: env(safe-area-inset-top, 0px);
+    background: #0c5599;
+  }
+  .mobileBusiness {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+    gap: 5px;
+    height: 87px;
+    padding: 12px;
+    color: #e4e4e4;
+  }
+  .mobileBusiness p {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font:
+      400 32px/58px "Ahiora Koulen",
+      sans-serif;
+    transform: translateY(3px);
+  }
+  .mobileUser {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) 40px;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding-left: 20px;
+    background: #2c86e0;
+    color: white;
+    font:
+      400 14px/17px "Ahiora Metrophobic",
+      sans-serif;
+  }
+  .mobileUser span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobileSignOut {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .mobileDock {
+    position: fixed;
+    z-index: 60;
+    bottom: calc(49px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    width: min(324px, calc(100vw - 32px));
+    height: 100px;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .mobileDockPill {
+    position: absolute;
+    inset: 19px 0 auto;
+    height: 62px;
+    border-radius: 21px;
+    background: linear-gradient(#2c86e0, #1b80b3);
+    pointer-events: auto;
+  }
+  .mobileHome,
+  .mobileMenu,
+  .mobileAdd {
+    position: absolute;
+    display: block;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobileHome,
+  .mobileMenu {
+    width: 48px;
+    height: 48px;
+  }
+  .mobileHome {
+    top: 23px;
+    left: calc((100% - 100px) / 4 - 19px);
+  }
+  .mobileMenu {
+    top: 26px;
+    right: calc((100% - 100px) / 4 - 19px);
+  }
+  .mobileAdd {
+    inset: 0 auto auto 50%;
+    width: 100px;
+    height: 100px;
+    transform: translateX(-50%);
+  }
+  .mobileAddBackground {
+    position: absolute;
+    inset: 0;
+  }
+  .mobileAddIcon {
+    position: absolute;
+    top: 9px;
+    left: 9px;
+  }
+  .mobileBlur {
+    position: fixed;
+    inset: calc(117px + env(safe-area-inset-top, 0px)) 0 0;
+    z-index: 40;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgb(211 211 211 / 45%);
+  }
+  .mobileNavigation {
+    position: fixed;
+    z-index: 50;
+    inset: calc(137px + env(safe-area-inset-top, 0px)) 24px
+      calc(173px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    justify-content: safe center;
+    gap: 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .mobileNavigation a {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 8px;
+    color: #0c5599;
+    font:
+      400 24px/1.3 "Ahiora Metrophobic",
+      sans-serif;
+    text-align: center;
+    text-decoration: none;
+  }
+  .mobileNavigation a.active {
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 7px;
+  }
+  .mobileActions {
+    position: fixed;
+    bottom: calc(154px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    width: 264px;
+    height: 194px;
+    padding: 13px;
+    transform: translateX(-50%);
+  }
+  .mobileActionBackground {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+  .mobileActions button {
+    flex-shrink: 0;
+    width: 238px;
+    height: 60px;
+    padding: 0;
+    border: 6px solid;
+    border-radius: 12px;
+    color: white;
+    font:
+      600 24px/29px "Ahiora Inter",
+      sans-serif;
+  }
+  .mobileActions .mobileNewTransaction {
+    border-color: #0c5599;
+    background: #2c86e0;
+  }
+  .mobileActions .mobileBillPayment {
+    border-color: #006616;
+    background: #29ad39;
+  }
+  .mobileLogout {
+    position: fixed;
+    z-index: 50;
+    inset: calc(117px + env(safe-area-inset-top, 0px)) 0
+      calc(149px + env(safe-area-inset-bottom, 0px));
+    color: black;
+  }
+  .mobileLogout > p {
+    position: absolute;
+    top: calc(30dvh - 117px);
+    left: 50%;
+    width: min(330px, calc(100vw - 48px));
+    margin: 0;
+    transform: translateX(-50%);
+    font:
+      400 36px/44px "Ahiora Metrophobic",
+      sans-serif;
+    text-align: center;
+  }
+  .mobileLogoutButtons {
+    position: absolute;
+    top: calc(54dvh - 117px);
+    left: 50%;
+    display: grid;
+    gap: 18px;
+    width: min(296px, calc(100vw - 48px));
+    transform: translateX(-50%);
+  }
+  .mobileLogoutButtons button {
+    position: relative;
+    height: 60px;
+    padding: 0;
+    border: 0;
+    border-radius: 18px;
+    color: white;
+    font:
+      400 36px/60px "Ahiora Koulen",
+      sans-serif;
+  }
+  .mobileStay {
+    background: #a3bcd4;
+  }
+  .mobileConfirmSignOut {
+    background: linear-gradient(#e84747, #da0000);
+  }
+  .mobileConfirmSignOut img {
+    position: absolute;
+    left: 18px;
+    top: 6px;
+  }
+  html[lang="es"] .mobileConfirmSignOut span {
+    padding-left: 40px;
+  }
+  .mobileLogout > .errorBox {
+    position: absolute;
+    inset: 12px 20px auto;
+  }
+  .mobilePreferences {
+    display: grid;
+    gap: 18px;
+  }
+}
+
+@media (max-width: 640px) and (max-height: 660px) {
+  .mobileDock {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobileNavigation {
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobileActions {
+    bottom: calc(121px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobileLogout {
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: safe center;
+    gap: 24px;
+    padding: 16px;
+    overflow: auto;
+  }
+  .mobileLogout > p,
+  .mobileLogoutButtons {
+    position: static;
+    transform: none;
+  }
+  .mobileLogout > p {
+    font-size: 28px;
+    line-height: 34px;
+  }
+}

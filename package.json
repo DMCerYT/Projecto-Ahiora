@@ -1,7 +1,7 @@
 {
-  "name": "small-business-financial-dashboard",
+  "name": "ahiora",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.js",
@@ -9,14 +9,23 @@
     "dev:server": "node server/index.js",
     "build": "vite build",
     "start": "node server/index.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.js",
+    "db:reset": "node scripts/reset-db.js",
+    "format": "prettier --write src server shared scripts tests docs README.md package.json vite.config.js",
+    "format:check": "prettier --check src server shared scripts tests docs README.md package.json vite.config.js"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "react-router-dom": "latest"
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-router-dom": "7.18.4"
   },
-  "devDependencies": {}
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.0.2",
+    "prettier": "3.9.10",
+    "vite": "8.3.4"
+  }
 }

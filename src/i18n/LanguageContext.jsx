@@ -1,37 +1,50 @@
-import { createContext, useContext, useMemo, useState } from 'react';
-import { translations } from './translations.js';
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { translations } from "./translations.js";
 
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
-  const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'en');
+  const [language, setLanguage] = useState(() =>
+    localStorage.getItem("language") === "es" ? "es" : "en",
+  );
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   function changeLanguage(nextLanguage) {
+    if (!["en", "es"].includes(nextLanguage)) return;
     setLanguage(nextLanguage);
-    localStorage.setItem('language', nextLanguage);
+    localStorage.setItem("language", nextLanguage);
   }
 
   const value = useMemo(() => {
     const dictionary = translations[language] || translations.en;
 
     function t(key, replacements = {}) {
-      const value = key.split('.').reduce((current, part) => current?.[part], dictionary) || key;
+      const value =
+        key.split(".").reduce((current, part) => current?.[part], dictionary) ||
+        key;
       return Object.entries(replacements).reduce(
         (text, [name, replacement]) => text.replace(`{${name}}`, replacement),
-        value
+        value,
       );
     }
 
     return { language, setLanguage: changeLanguage, t };
   }, [language]);
 
-  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+  return (
+    <LanguageContext.Provider value={value}>
+      {children}
+    </LanguageContext.Provider>
+  );
 }
 
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (!context) {
-    throw new Error('useLanguage must be used inside LanguageProvider');
+    throw new Error("useLanguage must be used inside LanguageProvider");
   }
   return context;
 }
