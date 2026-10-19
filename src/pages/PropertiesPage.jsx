@@ -1,20 +1,26 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
-import { Editor, Empty, PageTitle } from "../components/DomainUI.jsx";
+import { Editor, Empty, PageTitle, Status } from "../components/DomainUI.jsx";
 import {
   AddButton,
   BalanceSummary,
   DesktopIcon,
   EntityRow,
   PeriodControl,
+  EntityListFilter,
+  LifecycleNotice,
+  entityStatusConfirmation,
+  entityDeleteConfirmation,
 } from "../components/DesktopUI.jsx";
 import { TransactionEditor } from "../components/FinancialEditors.jsx";
 import { TransactionList } from "./TransactionsPage.jsx";
 
 export function PropertyEditor({ property, onClose }) {
   const { mutate } = useWorkspace();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   return (
     <Editor
       title={property ? "editProperty" : "newProperty"}
@@ -24,14 +30,36 @@ export function PropertyEditor({ property, onClose }) {
               ...property,
               monthly_rent: (property.monthly_rent_cents / 100).toFixed(2),
             }
-          : { monthly_rent: "0" }
+          : { monthly_rent: "0", status: "active" }
       }
       fields={[
         { name: "name", required: true, maxLength: 160 },
         { name: "address", required: true },
         { name: "tenant_name", maxLength: 160 },
         { name: "monthly_rent", type: "number", min: 0, hint: "rentHint" },
+        ...(property
+          ? [
+              {
+                name: "status",
+                type: "select",
+                options: ["active", "archived"],
+                required: true,
+              },
+            ]
+          : []),
       ]}
+      confirmSave={(body) => entityStatusConfirmation(property, body, t)}
+      deleteConfirmation={
+        property ? entityDeleteConfirmation(property, t) : undefined
+      }
+      onDelete={
+        property
+          ? async () => {
+              await mutate(`properties/${property.id}`, {}, "DELETE");
+              navigate("/properties");
+            }
+          : undefined
+      }
       onClose={onClose}
       onSave={(body) =>
         mutate(
@@ -47,14 +75,27 @@ export function PropertiesPage() {
   const { t } = useLanguage(),
     { data, editor } = useWorkspace();
   const [creating, setCreating] = useState(false),
-    [transaction, setTransaction] = useState(false);
+    [transaction, setTransaction] = useState(false),
+    [visibility, setVisibility] = useState("current");
+  const records = data.properties.filter(
+    (item) =>
+      !item.deleted_at &&
+      (visibility === "all" ||
+        (visibility === "archived"
+          ? item.status === "archived"
+          : item.status !== "archived")),
+  );
   return (
     <div className="pageStack">
       <PageTitle title="propertyList">
         {editor && (
           <div className="buttonRow">
             <AddButton
-              disabled={!data.properties.length}
+              disabled={
+                !data.properties.some(
+                  (item) => !item.deleted_at && item.status !== "archived",
+                )
+              }
               onClick={() => setTransaction(true)}
             >
               {t("newTransaction")}
@@ -65,13 +106,21 @@ export function PropertiesPage() {
           </div>
         )}
       </PageTitle>
-      <PeriodControl />
-      {!data.properties.length ? (
+      <div className="filterBar">
+        <PeriodControl />
+        <EntityListFilter value={visibility} onChange={setVisibility} />
+      </div>
+      {!records.length ? (
         <Empty />
       ) : (
         <div className="entityList">
-          {data.properties.map((property) => (
-            <EntityRow key={property.id} entity={property} property />
+          {records.map((property) => (
+            <div key={property.id}>
+              <EntityRow entity={property} property />
+              <div className="entityStatus">
+                <Status value={property.status} />
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -98,7 +147,7 @@ export function PropertyDetails() {
       <Link to="/properties">← {t("properties")}</Link>
       <header className="pageHeader">
         <h1>{property.name}</h1>
-        {editor && (
+        {editor && !property.deleted_at && (
           <div className="buttonRow">
             <button
               className="primaryButton desktopAction"
@@ -107,12 +156,16 @@ export function PropertyDetails() {
               {t("edit")}
               <DesktopIcon name="edit" />
             </button>
-            <AddButton onClick={() => setCreating(true)}>
-              {t("newTransaction")}
-            </AddButton>
+            {property.status !== "archived" && (
+              <AddButton onClick={() => setCreating(true)}>
+                {t("newTransaction")}
+              </AddButton>
+            )}
           </div>
         )}
       </header>
+      <LifecycleNotice entity={property} />
+      <Status value={property.status} />
       <section className="propertyInfo">
         <p>
           {t("address")}: {property.address}

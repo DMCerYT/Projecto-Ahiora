@@ -464,3 +464,73 @@ test("property rent income accepts amount and date without a name or reference, 
   });
   assert.equal(accepted.status, 201);
 });
+
+test("project and property lifecycle endpoints archive, restore and delete without losing transaction history", async () => {
+  const project = await request("/api/projects", {
+    method: "POST",
+    body: { name: "Lifecycle project", start_date: "2026-10-18" },
+  }).then((res) => res.json());
+  const property = await request("/api/properties", {
+    method: "POST",
+    body: { name: "Lifecycle rental", address: "123 Main" },
+  }).then((res) => res.json());
+  const tx = await request("/api/transactions", {
+    method: "POST",
+    body: {
+      property_id: property.id,
+      type: "income",
+      amount: "900",
+      date: "2026-10-18",
+    },
+  }).then((res) => res.json());
+  const archived = await request(`/api/properties/${property.id}`, {
+    method: "PUT",
+    body: { name: "Lifecycle rental", address: "123 Main", status: "archived" },
+  });
+  assert.equal(archived.status, 200);
+  const denied = await request("/api/transactions", {
+    method: "POST",
+    body: {
+      property_id: property.id,
+      type: "income",
+      amount: "900",
+      date: "2026-10-18",
+    },
+  });
+  assert.equal((await denied.json()).code, "archived");
+  assert.equal(
+    (
+      await request(`/api/properties/${property.id}`, {
+        method: "PUT",
+        body: {
+          name: "Lifecycle rental",
+          address: "123 Main",
+          status: "active",
+        },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request(`/api/projects/${project.id}`, {
+        method: "DELETE",
+        role: "employee",
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await request(`/api/projects/${project.id}`, { method: "DELETE" })).status,
+    200,
+  );
+  assert.equal(
+    (await request(`/api/properties/${property.id}`, { method: "DELETE" }))
+      .status,
+    200,
+  );
+  const { data } = await request("/api/workspace").then((res) => res.json());
+  assert.ok(data.transactions.some((item) => item.id === tx.id));
+  assert.ok(data.projects.find((item) => item.id === project.id).deleted_at);
+  assert.ok(data.properties.find((item) => item.id === property.id).deleted_at);
+});

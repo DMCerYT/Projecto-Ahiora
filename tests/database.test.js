@@ -43,7 +43,7 @@ test("versioned migrations are idempotent and startup preserves existing data", 
       );
       assert.equal(
         db.prepare("SELECT count(*) AS n FROM schema_migrations").get().n,
-        4,
+        5,
       );
       assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
       const tx = db.prepare("SELECT * FROM transactions WHERE id = 'tx'").get();
@@ -117,29 +117,26 @@ test("migration four preserves existing property income and attachments, then pe
     db.exec(
       "PRAGMA foreign_keys = ON; CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY); INSERT INTO schema_migrations VALUES (1),(2),(3)",
     );
-    const demo = seedDemo(db, { today: "2026-10-18", uploadDir: temp });
-    let store = new FinanceStore(db, { uploadDir: temp });
-    const property = store.saveProperty(demo.owner, {
-      name: "Rental",
-      address: "123 Main",
-    });
-    const old = store.createTransaction(demo.owner, {
-      property_id: property.id,
-      type: "income",
-      name: "Existing rent",
-      amount: "900",
-      date: "2026-10-18",
-      reference: {
-        reference_number: "RENT-OLD",
-        files: [{ name: "rent.txt", type: "text/plain", data: "aGVsbG8=" }],
-      },
-    });
-    const ref = db
-      .prepare("SELECT primary_reference_id FROM transactions WHERE id = ?")
-      .get(old.id).primary_reference_id;
+    db.exec(`BEGIN;
+      INSERT INTO businesses (id,name,owner_id) VALUES ('b','Existing business','u');
+      INSERT INTO users (id,business_id,email,name,role) VALUES ('u','b','owner@example.com','Owner','owner');
+      INSERT INTO properties (id,business_id,name,address) VALUES ('property','b','Rental','123 Main');
+      INSERT INTO evidence_references (id,business_id,transaction_id,reference_number,created_by) VALUES ('ref','b','rent','RENT-OLD','u');
+      INSERT INTO transactions (id,business_id,property_id,name,date,amount_cents,type,primary_reference_id,created_by) VALUES ('rent','b','property','Existing rent','2026-10-18',90000,'income','ref','u');
+      INSERT INTO file_attachments (id,business_id,reference_id,original_name,mime_type,size_bytes,storage_name) VALUES ('file','b','ref','rent.txt','text/plain',5,'rent.bin');
+      COMMIT;`);
+    const demo = { owner: { id: "u", business_id: "b", role: "owner" } },
+      property = { id: "property" },
+      old = { id: "rent" },
+      ref = "ref";
     db.close();
     db = openDatabase(path);
-    store = new FinanceStore(db, { uploadDir: temp });
+    const store = new FinanceStore(db, { uploadDir: temp });
+    const migratedProperty = db
+      .prepare("SELECT status, deleted_at FROM properties WHERE id = ?")
+      .get(property.id);
+    assert.equal(migratedProperty.status, "active");
+    assert.equal(migratedProperty.deleted_at, null);
     assert.equal(
       db
         .prepare("SELECT primary_reference_id FROM transactions WHERE id = ?")

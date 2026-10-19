@@ -520,3 +520,42 @@
     padding: 16px;
   }
 }
+
+.confirmationDialog {
+  width: min(520px, 92vw);
+  max-height: 90dvh;
+  overflow: auto;
+  border: 0;
+  border-radius: 20px;
+  padding: 28px;
+  font-family: "Ahiora Metrophobic", sans-serif;
+}
+.confirmationDialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+.confirmationDialog h2,
+.confirmationDialog p {
+  overflow-wrap: anywhere;
+}
+.confirmationDialog .buttonRow {
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+.confirmationDialog .primaryButton.danger {
+  background: #a62e2e;
+  color: white;
+}
+.entityDangerZone {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #d6a5a5;
+}
+.entityDangerZone h3 {
+  margin: 0;
+  color: #a62e2e;
+}
+.confirmationDialog .secondaryButton {
+  color: #0c5599;
+  background: white;
+  border-color: #0c5599;
+}

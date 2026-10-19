@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
 import { isPropertyIncome } from "../../shared/evidence.js";
+import ConfirmationDialog from "./ConfirmationDialog.jsx";
 import { FilePreview } from "./FilePreview.jsx";
 import { encodeFiles } from "../lib/apiClient.js";
 
@@ -151,13 +152,17 @@ export function Editor({
   subtitle,
   onSave,
   onClose,
+  confirmSave,
+  onDelete,
+  deleteConfirmation,
 }) {
   const { t } = useLanguage();
   const dialog = useRef(null);
   const [form, setForm] = useState(initial || {}),
     [files, setFiles] = useState([]),
     [error, setError] = useState(null),
-    [saving, setSaving] = useState(false);
+    [saving, setSaving] = useState(false),
+    [pending, setPending] = useState(null);
   useEffect(() => {
     dialog.current.showModal();
   }, []);
@@ -182,10 +187,29 @@ export function Editor({
           files: await encodeFiles(files),
         };
       }
-      await onSave(body);
+      const confirmation = confirmSave?.(body);
+      if (confirmation) setPending({ ...confirmation, kind: "save", body });
+      else {
+        await onSave(body);
+        onClose();
+      }
+    } catch (next) {
+      setError(next);
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function confirmAction() {
+    if (saving || !pending) return;
+    setSaving(true);
+    setError(null);
+    try {
+      if (pending.kind === "delete") await onDelete();
+      else await onSave(pending.body);
       onClose();
     } catch (next) {
       setError(next);
+      setPending(null);
     } finally {
       setSaving(false);
     }
@@ -250,7 +274,31 @@ export function Editor({
         <button className="primaryButton" disabled={saving}>
           {t(saving ? "saving" : "save")}
         </button>
+        {onDelete && (
+          <section className="entityDangerZone">
+            <h3>{t("deleteItem")}</h3>
+            <p className="fieldHint">{t("deleteHistoryHint")}</p>
+            <button
+              type="button"
+              className="smallButton danger"
+              disabled={saving}
+              onClick={() =>
+                setPending({ ...deleteConfirmation, kind: "delete" })
+              }
+            >
+              {t("delete")}
+            </button>
+          </section>
+        )}
       </form>
+      {pending && (
+        <ConfirmationDialog
+          {...pending}
+          busy={saving}
+          onConfirm={confirmAction}
+          onCancel={() => setPending(null)}
+        />
+      )}
     </dialog>
   );
 }
@@ -259,6 +307,13 @@ export function References({ transactionId, occurrenceId }) {
     { data, date, editor, mutate } = useWorkspace();
   const [adding, setAdding] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const transaction = data.transactions.find((tx) => tx.id === transactionId);
+  const target = transaction?.project_id
+    ? data.projects.find((item) => item.id === transaction.project_id)
+    : transaction?.property_id
+      ? data.properties.find((item) => item.id === transaction.property_id)
+      : null;
+  const canAdd = editor && !target?.deleted_at && target?.status !== "archived";
   const references = data.references.filter((reference) =>
     transactionId
       ? reference.transaction_id === transactionId
@@ -294,7 +349,7 @@ export function References({ transactionId, occurrenceId }) {
             ))}
         </div>
       ))}
-      {editor && (
+      {canAdd && (
         <button className="linkButton" onClick={() => setAdding(true)}>
           {t("addReference")}
         </button>

@@ -1,5 +1,23 @@
 export const translations = {
   en: {
+    confirm: "Confirm",
+    cancel: "Cancel",
+    deleted: "Deleted",
+    deleteItem: "Delete this item",
+    deleteHistoryHint:
+      "Deleting removes this item from lists and transaction pickers. Its transactions and receipts remain available in history.",
+    confirmStatusTitle: "Confirm status change",
+    confirmStatusMessage:
+      "Change “{name}” from {from} to {to}? Archived items keep their history and cannot receive new transactions until restored.",
+    confirmDeleteTitle: "Delete this item?",
+    confirmDeleteMessage:
+      "Delete “{name}”? It will disappear from lists and transaction pickers. Its transactions and receipts will remain in history.",
+    currentItems: "Current items",
+    allItems: "All items",
+    archivedHistoryHint:
+      "This item is archived. Its history is available for review. Restore it in the edit form to add transactions.",
+    deletedHistoryHint:
+      "This item has been deleted. Its transactions and receipts remain available for historical review.",
     optionalEvidenceHint:
       "References are optional for property income. You can add a receipt ID, date, notes, or attachments if needed.",
     rentIncomeNameHint:
@@ -300,7 +318,7 @@ export const translations = {
       unauthorized: "Your session has expired. Sign in again.",
       notFound: "This record is unavailable or you do not have access.",
       archived:
-        "Restore the archived project before changing its financial records.",
+        "Restore the archived project or property before changing its financial records.",
       ownerLocked: "The owner cannot be changed through team management.",
       contactRequired: "Provide an email, phone number, or address.",
       invalidTimeZone: "Enter a valid time zone, such as America/New_York.",
@@ -333,6 +351,24 @@ export const translations = {
     },
   },
   es: {
+    confirm: "Confirmar",
+    cancel: "Cancelar",
+    deleted: "Eliminado",
+    deleteItem: "Eliminar este elemento",
+    deleteHistoryHint:
+      "Al eliminarlo, desaparece de las listas y selectores de transacciones. Sus transacciones y recibos se conservan en el historial.",
+    confirmStatusTitle: "Confirmar cambio de estado",
+    confirmStatusMessage:
+      "¿Cambiar “{name}” de {from} a {to}? Los elementos archivados conservan su historial y no reciben nuevas transacciones hasta ser restaurados.",
+    confirmDeleteTitle: "¿Eliminar este elemento?",
+    confirmDeleteMessage:
+      "¿Eliminar “{name}”? Desaparecerá de las listas y selectores de transacciones. Sus transacciones y recibos se conservarán en el historial.",
+    currentItems: "Elementos actuales",
+    allItems: "Todos los elementos",
+    archivedHistoryHint:
+      "Este elemento está archivado. Puedes revisar su historial. Restáuralo desde el formulario de edición para agregar transacciones.",
+    deletedHistoryHint:
+      "Este elemento fue eliminado. Sus transacciones y recibos se conservan para consultar el historial.",
     optionalEvidenceHint:
       "Los comprobantes son opcionales para los ingresos de propiedades. Puedes agregar número de recibo, fecha, notas o archivos si lo necesitas.",
     rentIncomeNameHint:
@@ -635,7 +671,7 @@ export const translations = {
       notFound:
         "El registro no está disponible o está fuera de tus proyectos asignados.",
       archived:
-        "Restaura el proyecto archivado antes de modificar sus finanzas.",
+        "Restaura el proyecto o propiedad archivados antes de modificar sus finanzas.",
       ownerLocked:
         "No se puede cambiar al propietario desde la gestión del equipo.",
       contactRequired: "Proporciona correo, teléfono o dirección.",

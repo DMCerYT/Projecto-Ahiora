@@ -147,6 +147,7 @@ export class FinanceStore {
       );
     if (write) {
       this.editor(user);
+      requireThat(!project.deleted_at, "notFound", 404);
       requireThat(project.status !== "archived", "archived");
     }
     return project;
@@ -155,7 +156,11 @@ export class FinanceStore {
     const property = this.row("properties", id, user);
     // Property assignments are intentionally unavailable until Team is enabled.
     requireThat(user.role !== "employee", "notFound", 404);
-    if (write) this.editor(user);
+    if (write) {
+      this.editor(user);
+      requireThat(!property.deleted_at, "notFound", 404);
+      requireThat(property.status !== "archived", "archived");
+    }
     return property;
   }
   transactionAccess(user, transaction, write = false) {
@@ -173,26 +178,54 @@ export class FinanceStore {
   }
   saveProperty(user, body, id) {
     this.editor(user);
-    const old = id ? this.property(user, id, true) : null;
+    const old = id ? this.property(user, id) : null;
+    requireThat(!old?.deleted_at, "notFound", 404);
     const name = requiredText(body.name, 160),
       address = requiredText(body.address, 500);
     const tenant = text(body.tenant_name, 160),
-      rent = cents(body.monthly_rent || "0", true);
+      rent = cents(body.monthly_rent || "0", true),
+      status = option(body.status || old?.status || "active", [
+        "active",
+        "archived",
+      ]);
     id ||= randomUUID();
     return this.atomic(() => {
       if (old)
         this.db
           .prepare(
-            "UPDATE properties SET name = ?, address = ?, tenant_name = ?, monthly_rent_cents = ? WHERE id = ?",
+            "UPDATE properties SET name = ?, address = ?, tenant_name = ?, monthly_rent_cents = ?, status = ? WHERE id = ?",
           )
-          .run(name, address, tenant, rent, id);
+          .run(name, address, tenant, rent, status, id);
       else
         this.db
           .prepare(
-            "INSERT INTO properties (id, business_id, name, address, tenant_name, monthly_rent_cents) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO properties (id, business_id, name, address, tenant_name, monthly_rent_cents, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
           )
-          .run(id, user.business_id, name, address, tenant, rent);
-      this.audit(user, old ? "property.updated" : "property.created", id);
+          .run(id, user.business_id, name, address, tenant, rent, status);
+      this.audit(user, old ? "property.updated" : "property.created", id, {
+        before: old || null,
+        status,
+      });
+      return { id };
+    });
+  }
+  deleteProject(user, id) {
+    return this.deleteEntity(user, "projects", "project", id);
+  }
+  deleteProperty(user, id) {
+    return this.deleteEntity(user, "properties", "property", id);
+  }
+  deleteEntity(user, table, kind, id) {
+    this.editor(user);
+    const old = this.row(table, id, user);
+    if (old.deleted_at) return { id };
+    return this.atomic(() => {
+      this.db
+        .prepare(
+          `UPDATE ${table} SET deleted_at = ?, status = 'archived' WHERE id = ? AND business_id = ?`,
+        )
+        .run(this.now().toISOString(), id, user.business_id);
+      this.audit(user, `${kind}.deleted`, id, { before: old });
       return { id };
     });
   }
@@ -285,7 +318,9 @@ export class FinanceStore {
   assignments(user, ids = []) {
     requireThat(Array.isArray(ids) && ids.length <= 200, "invalidOption");
     const unique = [...new Set(ids)];
-    unique.forEach((id) => this.project(user, id));
+    unique.forEach((id) =>
+      requireThat(!this.project(user, id).deleted_at, "notFound", 404),
+    );
     return unique;
   }
   saveMember(user, body, id) {
@@ -362,12 +397,13 @@ export class FinanceStore {
   saveProject(user, body, id) {
     this.editor(user);
     const old = id ? this.row("projects", id, user) : null;
+    requireThat(!old?.deleted_at, "notFound", 404);
     const name = requiredText(body.name, 160),
       start = dateValue(body.start_date),
       end = body.end_date ? dateValue(body.end_date) : null;
     requireThat(!end || end >= start, "invalidDate");
     const budget = cents(body.budget ?? "0", true),
-      status = option(body.status || "active", [
+      status = option(body.status || old?.status || "active", [
         "active",
         "completed",
         "archived",

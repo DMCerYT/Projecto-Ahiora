@@ -906,3 +906,174 @@ test("legacy reference timestamps display as dates in the business timezone with
     "2026-10-18T01:00:00Z",
   );
 });
+
+test("archived properties reject financial writes and can be restored without losing history", () => {
+  const property = store.saveProperty(demo.owner, {
+    name: "Rental",
+    address: "123 Main",
+    monthly_rent: "900",
+  });
+  const body = {
+    property_id: property.id,
+    type: "income",
+    amount: "900",
+    date: "2026-10-18",
+  };
+  const tx = store.createTransaction(demo.owner, body);
+  store.saveProperty(
+    demo.owner,
+    {
+      name: "Rental",
+      address: "123 Main",
+      monthly_rent: "900",
+      status: "archived",
+    },
+    property.id,
+  );
+  assert.throws(
+    () => store.createTransaction(demo.owner, body),
+    code("archived"),
+  );
+  assert.throws(
+    () => store.voidTransaction(demo.owner, tx.id),
+    code("archived"),
+  );
+  assert.throws(
+    () =>
+      store.addReference(demo.owner, {
+        transaction_id: tx.id,
+        reference_number: "R",
+      }),
+    code("archived"),
+  );
+  assert.ok(
+    store.workspace(demo.owner).transactions.some((item) => item.id === tx.id),
+  );
+  store.saveProperty(
+    demo.owner,
+    {
+      name: "Rental",
+      address: "123 Main",
+      monthly_rent: "900",
+      status: "active",
+    },
+    property.id,
+  );
+  assert.ok(store.createTransaction(demo.owner, body).id);
+  assert.equal(
+    store.property(demo.owner, property.id).monthly_rent_cents,
+    90000,
+  );
+});
+test("deleting destinations preserves financial history and attachments and prevents future writes", () => {
+  const property = store.saveProperty(demo.owner, {
+    name: "Rental",
+    address: "123 Main",
+  });
+  const tx = store.createTransaction(demo.owner, {
+    property_id: property.id,
+    type: "income",
+    amount: "900",
+    date: "2026-10-18",
+    reference: {
+      files: [{ name: "rent.txt", type: "text/plain", data: "aGVsbG8=" }],
+    },
+  });
+  const file = store
+    .workspace(demo.owner)
+    .attachments.find(
+      (item) =>
+        item.reference_id ===
+        db
+          .prepare("SELECT primary_reference_id FROM transactions WHERE id = ?")
+          .get(tx.id).primary_reference_id,
+    );
+  store.deleteProperty(demo.owner, property.id);
+  store.deleteProject(demo.owner, demo.project.id);
+  store.deleteProperty(demo.owner, property.id);
+  const data = store.workspace(demo.owner);
+  assert.equal(
+    data.properties.find((item) => item.id === property.id).deleted_at,
+    "2026-10-18T16:00:00.000Z",
+  );
+  assert.equal(
+    data.projects.find((item) => item.id === demo.project.id).status,
+    "archived",
+  );
+  assert.ok(data.transactions.some((item) => item.id === tx.id));
+  assert.ok(data.transactions.some((item) => item.id === demo.expense.id));
+  assert.ok(store.attachment(demo.owner, file.id));
+  assert.throws(
+    () =>
+      store.createTransaction(demo.owner, txBody({ reference_number: "R" })),
+    code("notFound"),
+  );
+  assert.throws(
+    () =>
+      store.createTransaction(demo.owner, {
+        property_id: property.id,
+        type: "income",
+        amount: "1",
+        date: "2026-10-18",
+      }),
+    code("notFound"),
+  );
+  assert.throws(
+    () =>
+      store.saveProperty(
+        demo.owner,
+        { name: "Restore", address: "No", status: "active" },
+        property.id,
+      ),
+    code("notFound"),
+  );
+  assert.throws(
+    () =>
+      store.saveProject(
+        demo.owner,
+        { name: "Restore", start_date: "2026-10-18", status: "active" },
+        demo.project.id,
+      ),
+    code("notFound"),
+  );
+  assert.equal(
+    db
+      .prepare(
+        "SELECT count(*) AS n FROM audit_events WHERE entity_id = ? AND action = 'property.deleted'",
+      )
+      .get(property.id).n,
+    1,
+  );
+  assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+});
+test("only authorized business editors can archive or delete destinations", () => {
+  const employee = db
+    .prepare("SELECT * FROM users WHERE id = ?")
+    .get(demo.employee.id);
+  assert.throws(
+    () => store.deleteProject(employee, demo.project.id),
+    code("forbidden"),
+  );
+  const property = store.saveProperty(demo.owner, {
+    name: "Rental",
+    address: "123 Main",
+  });
+  assert.throws(
+    () => store.deleteProperty(employee, property.id),
+    code("forbidden"),
+  );
+  const other = store.createBusiness({
+    name: "Other",
+    business_name: "Other",
+    email: "delete-outsider@example.com",
+    password: "Password123",
+  });
+  assert.throws(
+    () => store.deleteProject(other, demo.project.id),
+    code("notFound"),
+  );
+  assert.throws(
+    () => store.deleteProperty(other, property.id),
+    code("notFound"),
+  );
+});

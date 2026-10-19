@@ -27,10 +27,12 @@ export function ContractorsPage() {
       name: "project_ids",
       label: "assignProjects",
       type: "checks",
-      options: data.projects.map((project) => ({
-        value: project.id,
-        label: project.name,
-      })),
+      options: data.projects
+        .filter((project) => !project.deleted_at)
+        .map((project) => ({
+          value: project.id,
+          label: project.name,
+        })),
     },
   ];
   return (
@@ -91,7 +93,14 @@ export function ContractorsPage() {
         <Editor
           title={editing.id ? "editContractor" : "newContractor"}
           fields={fields}
-          initial={editing}
+          initial={{
+            ...editing,
+            project_ids: editing.project_ids?.filter((id) =>
+              data.projects.some(
+                (project) => project.id === id && !project.deleted_at,
+              ),
+            ),
+          }}
           onClose={() => setEditing(null)}
           onSave={(body) =>
             mutate(
@@ -138,10 +147,12 @@ export function TeamPage() {
       name: "project_ids",
       label: "assignProjects",
       type: "checks",
-      options: data.projects.map((project) => ({
-        value: project.id,
-        label: project.name,
-      })),
+      options: data.projects
+        .filter((project) => !project.deleted_at)
+        .map((project) => ({
+          value: project.id,
+          label: project.name,
+        })),
       show: (form) => form.role === "employee",
     },
   ];
@@ -206,7 +217,14 @@ export function TeamPage() {
         <Editor
           title={editing.id ? "editMember" : "newMember"}
           fields={fields}
-          initial={editing}
+          initial={{
+            ...editing,
+            project_ids: editing.project_ids?.filter((id) =>
+              data.projects.some(
+                (project) => project.id === id && !project.deleted_at,
+              ),
+            ),
+          }}
           onClose={() => setEditing(null)}
           onSave={(body) =>
             mutate(

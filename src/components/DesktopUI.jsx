@@ -142,3 +142,46 @@ export function BalanceSummary({ target, id, budget = 0 }) {
     </section>
   );
 }
+
+export function EntityListFilter({ value, onChange }) {
+  const { t } = useLanguage();
+  return (
+    <label className="periodControl">
+      {t("show")}
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="current">{t("currentItems")}</option>
+        <option value="archived">{t("statuses.archived")}</option>
+        <option value="all">{t("allItems")}</option>
+      </select>
+    </label>
+  );
+}
+export function LifecycleNotice({ entity }) {
+  const { t } = useLanguage();
+  return entity.deleted_at || entity.status === "archived" ? (
+    <p className="stateBox">
+      {t(entity.deleted_at ? "deletedHistoryHint" : "archivedHistoryHint")}
+    </p>
+  ) : null;
+}
+export function entityStatusConfirmation(entity, body, t) {
+  if (!entity || entity.status === body.status) return null;
+  return {
+    title: t("confirmStatusTitle"),
+    message: t("confirmStatusMessage", {
+      name: entity.name,
+      from: t(`statuses.${entity.status}`),
+      to: t(`statuses.${body.status}`),
+    }),
+    confirmLabel: "confirm",
+    danger: body.status === "archived",
+  };
+}
+export function entityDeleteConfirmation(entity, t) {
+  return {
+    title: t("confirmDeleteTitle"),
+    message: t("confirmDeleteMessage", { name: entity.name }),
+    confirmLabel: "delete",
+    danger: true,
+  };
+}

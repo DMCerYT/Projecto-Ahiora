@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
 import {
@@ -15,6 +15,10 @@ import {
   DesktopIcon,
   EntityRow,
   PeriodControl,
+  EntityListFilter,
+  LifecycleNotice,
+  entityStatusConfirmation,
+  entityDeleteConfirmation,
 } from "../components/DesktopUI.jsx";
 import { TransactionEditor } from "../components/FinancialEditors.jsx";
 import { TransactionList } from "./TransactionsPage.jsx";
@@ -33,6 +37,8 @@ const projectFields = [
 ];
 export function ProjectEditor({ project, onClose }) {
   const { data, mutate } = useWorkspace();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   return (
     <Editor
       title={project ? "editProject" : "newProject"}
@@ -41,7 +47,23 @@ export function ProjectEditor({ project, onClose }) {
           ? { ...project, budget: (project.budget_cents / 100).toFixed(2) }
           : { start_date: data.today, status: "active", budget: "0" }
       }
-      fields={projectFields}
+      fields={projectFields.map((field) =>
+        field.name === "status" && !project
+          ? { ...field, options: ["active", "completed"] }
+          : field,
+      )}
+      confirmSave={(body) => entityStatusConfirmation(project, body, t)}
+      deleteConfirmation={
+        project ? entityDeleteConfirmation(project, t) : undefined
+      }
+      onDelete={
+        project
+          ? async () => {
+              await mutate(`projects/${project.id}`, {}, "DELETE");
+              navigate("/projects");
+            }
+          : undefined
+      }
       onClose={onClose}
       onSave={(body) =>
         mutate(
@@ -57,7 +79,16 @@ export function ProjectsPage() {
   const { t } = useLanguage(),
     { data, editor } = useWorkspace();
   const [editing, setEditing] = useState(null),
-    [creating, setCreating] = useState(false);
+    [creating, setCreating] = useState(false),
+    [visibility, setVisibility] = useState("current");
+  const records = data.projects.filter(
+    (item) =>
+      !item.deleted_at &&
+      (visibility === "all" ||
+        (visibility === "archived"
+          ? item.status === "archived"
+          : item.status !== "archived")),
+  );
   return (
     <div className="pageStack">
       <PageTitle title="projects">
@@ -65,7 +96,9 @@ export function ProjectsPage() {
           <div className="buttonRow">
             <AddButton
               disabled={
-                !data.projects.some((item) => item.status !== "archived")
+                !data.projects.some(
+                  (item) => !item.deleted_at && item.status !== "archived",
+                )
               }
               onClick={() => setCreating(true)}
             >
@@ -77,12 +110,15 @@ export function ProjectsPage() {
           </div>
         )}
       </PageTitle>
-      <PeriodControl />
-      {!data.projects.length ? (
+      <div className="filterBar">
+        <PeriodControl />
+        <EntityListFilter value={visibility} onChange={setVisibility} />
+      </div>
+      {!records.length ? (
         <Empty />
       ) : (
         <div className="entityList">
-          {data.projects.map((project) => (
+          {records.map((project) => (
             <div key={project.id}>
               <EntityRow entity={project} />
               <div className="entityStatus">
@@ -129,7 +165,7 @@ export function ProjectDetails() {
           </p>
           <Status value={project.status} />
         </div>
-        {editor && (
+        {editor && !project.deleted_at && (
           <button
             className="primaryButton desktopAction"
             onClick={() => setEditing(true)}
@@ -139,6 +175,7 @@ export function ProjectDetails() {
           </button>
         )}
       </header>
+      <LifecycleNotice entity={project} />
       <PeriodControl />
       <BalanceSummary
         target="project_id"

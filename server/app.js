@@ -287,7 +287,22 @@ export function createApp({
       if (!match) throw new DomainError("notFound", 404);
       const [, entity, id, action] = match;
       let result;
-      if (entity === "contractors" && req.method === "DELETE" && id && !action)
+      if (
+        (entity === "projects" || entity === "properties") &&
+        req.method === "DELETE" &&
+        id &&
+        !action
+      )
+        result =
+          entity === "projects"
+            ? store.deleteProject(user, id)
+            : store.deleteProperty(user, id);
+      else if (
+        entity === "contractors" &&
+        req.method === "DELETE" &&
+        id &&
+        !action
+      )
         result = store.deleteContractor(user, id);
       else if (
         req.method === "POST" &&

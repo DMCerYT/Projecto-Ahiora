@@ -38,6 +38,7 @@ export function openDatabase(path = process.env.DB_PATH || defaultDbPath) {
         "./migrations/004-optional-property-income-references.sql",
         import.meta.url,
       ),
+      new URL("./migrations/005-entity-lifecycle.sql", import.meta.url),
     ];
     migrations.forEach((url, index) => {
       const version = index + 1;

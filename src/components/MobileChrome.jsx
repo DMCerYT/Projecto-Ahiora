@@ -33,8 +33,12 @@ export default function MobileChrome({
     [error, setError] = useState(null);
   const mobileItems = items;
   const hasProjects =
-    data.properties.length > 0 ||
-    data.projects.some((project) => project.status !== "archived");
+    data.properties.some(
+      (property) => !property.deleted_at && property.status !== "archived",
+    ) ||
+    data.projects.some(
+      (project) => !project.deleted_at && project.status !== "archived",
+    );
 
   useEffect(() => {
     setOverlay(null);

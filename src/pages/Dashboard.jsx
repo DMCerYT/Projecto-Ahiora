@@ -15,7 +15,12 @@ export default function Dashboard() {
   const { t } = useLanguage(),
     { data, editor } = useWorkspace();
   const [creating, setCreating] = useState(null);
-  const projects = data.projects.filter((item) => item.status === "active");
+  const projects = data.projects.filter(
+    (item) => !item.deleted_at && item.status === "active",
+  );
+  const properties = data.properties.filter(
+    (item) => !item.deleted_at && item.status !== "archived",
+  );
   const events = buildCalendarEvents(data);
   return (
     <div className="pageStack">
@@ -26,7 +31,7 @@ export default function Dashboard() {
           <div className="sectionHeader">
             <h2>{t("propertyList")}</h2>
             <AddButton
-              disabled={!data.properties.length}
+              disabled={!properties.length}
               onClick={() => setCreating("property")}
             >
               {t("newTransaction")}
@@ -34,11 +39,11 @@ export default function Dashboard() {
           </div>
           <details className="dashboardGroup" open>
             <summary>
-              {t("properties")} ({data.properties.length})
+              {t("properties")} ({properties.length})
             </summary>
-            {data.properties.length ? (
+            {properties.length ? (
               <div className="entityList">
-                {data.properties.map((property) => (
+                {properties.map((property) => (
                   <EntityRow key={property.id} entity={property} property />
                 ))}
               </div>

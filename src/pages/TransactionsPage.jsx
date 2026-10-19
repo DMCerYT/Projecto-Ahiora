@@ -116,7 +116,10 @@ export function TransactionDetails({ transaction: tx, onClose }) {
       {editor &&
         tx.status === "recorded" &&
         !tx.bill_id &&
-        project?.status !== "archived" && (
+        project?.status !== "archived" &&
+        property?.status !== "archived" &&
+        !project?.deleted_at &&
+        !property?.deleted_at && (
           <button
             className="smallButton danger"
             disabled={action.busy}
@@ -146,7 +149,8 @@ export function TransactionList({ projectId, propertyId, columns = false }) {
     if (data.transactions.some((tx) => `#${tx.id}` === hash))
       setSelected(hash.slice(1));
   }, [hash, data.transactions]);
-  const targets = targetOptions(data, t);
+  const targets = targetOptions(data, t, undefined, true);
+  const selectableTargets = targetOptions(data, t);
   const records = data.transactions
     .filter(
       (tx) =>
@@ -173,11 +177,19 @@ export function TransactionList({ projectId, propertyId, columns = false }) {
     editor &&
     (projectId
       ? data.projects.some(
-          (item) => item.id === projectId && item.status !== "archived",
+          (item) =>
+            item.id === projectId &&
+            !item.deleted_at &&
+            item.status !== "archived",
         )
       : propertyId
-        ? true
-        : targets.length > 0);
+        ? data.properties.some(
+            (item) =>
+              item.id === propertyId &&
+              !item.deleted_at &&
+              item.status !== "archived",
+          )
+        : selectableTargets.length > 0);
   const card = (tx) => {
     const reference = data.references.find(
       (item) => item.id === tx.primary_reference_id,
