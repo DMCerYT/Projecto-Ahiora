@@ -9,10 +9,7 @@ function fixture() {
       { id: "project", status: "active" },
       { id: "archive", status: "archived" },
     ],
-    bills: [
-      { id: "bill", project_id: "project", name: "Rent" },
-      { id: "archived-bill", project_id: "archive", name: "Old rent" },
-    ],
+    bills: [{ id: "bill", name: "Rent" }],
     occurrences: [
       {
         id: "unpaid",
@@ -74,9 +71,9 @@ test("processing or processed payment records cannot be offered for a second pay
   ];
   assert.deepEqual(unpaidBillChoices(data), []);
 });
-test("bill selection cannot recover projects omitted by the permission-filtered workspace", () => {
+test("bill selection cannot recover bills omitted by the permission-filtered workspace", () => {
   const data = fixture();
-  data.projects = [];
+  data.bills = [];
   assert.deepEqual(unpaidBillChoices(data), []);
 });
 
@@ -103,7 +100,7 @@ test("only the nearest upcoming unpaid installment per schedule is offered, even
 });
 test("all missed installments are offered alongside one upcoming installment, independently per schedule", () => {
   const data = fixture();
-  data.bills.push({ id: "card", project_id: "project", name: "Credit card" });
+  data.bills.push({ id: "card", name: "Credit card" });
   data.occurrences.push(
     { id: "older", bill_id: "bill", status: "unpaid", due_date: "2026-09-01" },
     {

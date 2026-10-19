@@ -5,7 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "http://127.0.0.1:3001",
+      "/api": {
+        target: "http://127.0.0.1:3001",
+        // The API compares Origin with Host to reject cross-origin writes.
+        changeOrigin: false,
+      },
     },
   },
 });

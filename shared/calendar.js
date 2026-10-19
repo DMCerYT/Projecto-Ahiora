@@ -20,7 +20,7 @@ export function buildCalendarEvents(data) {
           date: occurrence.due_date,
           kind: "billDue",
           status: occurrence.display_status,
-          to: `/bills#${occurrence.id}`,
+          to: `/transactions?tab=bills#${occurrence.id}`,
         };
       }),
     ...data.payments.map((payment) => {
@@ -34,7 +34,7 @@ export function buildCalendarEvents(data) {
         date: payment.payment_date,
         kind: "payment",
         status: payment.status,
-        to: `/bills#${occurrence.id}`,
+        to: `/transactions?tab=bills#${occurrence.id}`,
       };
     }),
     ...data.transactions
@@ -43,6 +43,7 @@ export function buildCalendarEvents(data) {
         id: `transaction-${tx.id}`,
         title: tx.name,
         project_id: tx.project_id,
+        property_id: tx.property_id,
         amount_cents: tx.amount_cents,
         date: tx.date,
         kind: tx.type,

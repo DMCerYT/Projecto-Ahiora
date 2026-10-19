@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
-import { useMobile } from "../lib/useMobile.js";
 import { apiRequest } from "../lib/apiClient.js";
 import {
   Editor,
@@ -224,7 +223,6 @@ export function TeamPage() {
 export function SettingsPage() {
   const { t } = useLanguage(),
     { data, owner, editor, mutate } = useWorkspace();
-  const mobile = useMobile();
   const [form, setForm] = useState(data.business),
     [editing, setEditing] = useState(null),
     [saved, setSaved] = useState(false);
@@ -244,11 +242,11 @@ export function SettingsPage() {
     { name: "currency", required: true, hint: "currencyHint" },
     { name: "time_zone", required: true },
   ];
-  if (!editor && !mobile) return <Navigate to="/" replace />;
+
   return (
     <div className="pageStack">
       <PageTitle title="settings" />
-      <MobileLanguageSettings />
+      <LanguageSettings />
       <ErrorBox error={action.error} />
       {owner && (
         <form
@@ -325,7 +323,7 @@ export function SettingsPage() {
   );
 }
 
-function MobileLanguageSettings() {
+function LanguageSettings() {
   const { language, setLanguage, t } = useLanguage();
   const { setUser } = useWorkspace();
   const [busy, setBusy] = useState(false),
@@ -347,7 +345,7 @@ function MobileLanguageSettings() {
     }
   }
   return (
-    <section className="contentSection mobilePreferences">
+    <section className="contentSection personalPreferences">
       <h2>{t("personalSettings")}</h2>
       <label>
         {t("language")}

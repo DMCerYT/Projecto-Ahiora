@@ -4,6 +4,11 @@ import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
 import { unpaidBillChoices } from "../../shared/paymentChoices.js";
 import { Editor } from "./DomainUI.jsx";
+import {
+  targetOptions,
+  transactionTarget,
+  isPropertyIncomeDraft,
+} from "../lib/transactionTargets.js";
 import { useMobile } from "../lib/useMobile.js";
 import {
   MobileTransactionFlow,
@@ -12,26 +17,41 @@ import {
   MobileBillPicker,
 } from "./MobileFinancialFlows.jsx";
 
-export function TransactionEditor({ projectId = "", onClose }) {
+export function TransactionEditor({
+  projectId = "",
+  propertyId = "",
+  targetType,
+  onClose,
+}) {
   const { data, mutate } = useWorkspace();
+  const { t } = useLanguage();
   const mobile = useMobile();
-  const projects = data.projects
-    .filter((project) => project.status !== "archived")
-    .map((project) => ({ value: project.id, label: project.name }));
+  const targets = targetOptions(data, t, targetType);
   if (mobile)
-    return <MobileTransactionFlow projectId={projectId} onClose={onClose} />;
+    return (
+      <MobileTransactionFlow
+        projectId={projectId}
+        propertyId={propertyId}
+        targetType={targetType}
+        onClose={onClose}
+      />
+    );
   return (
     <Editor
       title="newTransaction"
       fields={[
         {
-          name: "project_id",
-          label: "project",
+          name: "destination",
+          label: "destination",
           type: "select",
-          options: projects,
+          options: targets,
           required: true,
         },
-        { name: "name", required: true },
+        {
+          name: "name",
+          required: (form) => !isPropertyIncomeDraft(form),
+          hint: "rentIncomeNameHint",
+        },
         {
           name: "type",
           type: "select",
@@ -42,10 +62,19 @@ export function TransactionEditor({ projectId = "", onClose }) {
         { name: "date", type: "date", required: true },
         { name: "invoice_id" },
       ]}
-      initial={{ project_id: projectId, date: data.today, type: "expense" }}
+      initial={{
+        destination: propertyId
+          ? `property:${propertyId}`
+          : projectId
+            ? `project:${projectId}`
+            : "",
+        date: data.today,
+        type: "expense",
+      }}
       evidence
+      receiptRequired={(form) => !isPropertyIncomeDraft(form)}
       onClose={onClose}
-      onSave={(body) => mutate("transactions", body)}
+      onSave={(body) => mutate("transactions", transactionTarget(body))}
     />
   );
 }
@@ -143,7 +172,7 @@ function DesktopBillPaymentPicker({ onClose }) {
           if (!next) return;
           // A failed attempt already has a payment record: resume its existing workflow.
           if (next.payment) {
-            navigate(`/bills#${next.row.id}`);
+            navigate(`/transactions?tab=bills#${next.row.id}`);
             onClose();
           } else setChoice(next);
         }}
@@ -167,10 +196,9 @@ function DesktopBillPaymentPicker({ onClose }) {
               required
             >
               <option value="">{t("choose")}</option>
-              {choices.map(({ row, bill, project }) => (
+              {choices.map(({ row, bill }) => (
                 <option key={row.id} value={row.id}>
-                  {bill.name} · {project.name} · {date(row.due_date)} ·{" "}
-                  {money(row.amount_cents)}
+                  {bill.name} · {date(row.due_date)} · {money(row.amount_cents)}
                 </option>
               ))}
             </select>
@@ -193,22 +221,12 @@ function DesktopBillPaymentPicker({ onClose }) {
 export function BillScheduleEditor({ onClose }) {
   const { data, mutate } = useWorkspace();
   const mobile = useMobile();
-  const projects = data.projects
-    .filter((project) => project.status !== "archived")
-    .map((project) => ({ value: project.id, label: project.name }));
   const accounts = data.billing_accounts.map((account) => ({
     value: account.id,
     label: `${account.name} ${account.masked_identifier}`,
   }));
   const fields = [
     { name: "name", required: true, maxLength: mobile ? 160 : undefined },
-    {
-      name: "project_id",
-      label: "project",
-      type: "select",
-      options: projects,
-      required: true,
-    },
     { name: "amount", type: "number", min: "0.01", required: true },
     { name: "first_due_date", type: "date", required: true },
     {

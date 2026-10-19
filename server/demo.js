@@ -109,12 +109,12 @@ export function seedDemo(db, { today = todayInZone(), uploadDir } = {}) {
     date: today,
     amount: "500",
     reference: {
-      evidence_at: `${today}T14:00:00Z`,
-      description: "Demo payment timestamp",
+      reference_number: "DEMO-DESIGN-001",
+      evidence_at: today,
+      description: "Demo payment date",
     },
   });
   const monthly = store.createBill(owner, {
-    project_id: project.id,
     name: "Equipment lease",
     amount: "300",
     first_due_date: monthBounds(today.slice(0, 7)).end,
@@ -124,7 +124,6 @@ export function seedDemo(db, { today = todayInZone(), uploadDir } = {}) {
     billing_account_id: account.id,
   });
   store.createBill(owner, {
-    project_id: operations.id,
     name: "Internet service",
     amount: "100",
     first_due_date: addDays(today, 3),
@@ -133,7 +132,6 @@ export function seedDemo(db, { today = todayInZone(), uploadDir } = {}) {
     billing_account_id: account.id,
   });
   const paidBill = store.createBill(owner, {
-    project_id: operations.id,
     name: "Business supplies",
     amount: "100",
     first_due_date: addDays(today, -2),
@@ -141,7 +139,6 @@ export function seedDemo(db, { today = todayInZone(), uploadDir } = {}) {
     billing_account_id: account.id,
   });
   const processingBill = store.createBill(owner, {
-    project_id: second.id,
     name: "Inspection fee",
     amount: "250",
     first_due_date: addDays(today, -1),
@@ -149,7 +146,6 @@ export function seedDemo(db, { today = todayInZone(), uploadDir } = {}) {
     billing_account_id: account.id,
   });
   store.createBill(owner, {
-    project_id: project.id,
     name: "Weekly site cleaning",
     amount: "75",
     first_due_date: addDays(today, 2),
@@ -167,7 +163,7 @@ export function seedDemo(db, { today = todayInZone(), uploadDir } = {}) {
     processingOccurrence = occurrenceFor(processingBill);
   const reference = {
     reference_number: "DEMO-PAID-001",
-    evidence_at: `${today}T12:00:00Z`,
+    evidence_at: today,
     description: "Demo receipt; not a real payment",
   };
   if (uploadDir)

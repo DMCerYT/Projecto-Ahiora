@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
+import { isPropertyIncome } from "../../shared/evidence.js";
+import { FilePreview } from "./FilePreview.jsx";
 import { encodeFiles } from "../lib/apiClient.js";
 
 export function ErrorBox({ error }) {
@@ -21,14 +23,15 @@ export function Empty() {
   const { t } = useLanguage();
   return <p className="stateBox">{t("noRecords")}</p>;
 }
-export function PageTitle({ title, children }) {
+export function PageTitle({ title, children, level = 1 }) {
   const { t } = useLanguage(),
     { data } = useWorkspace();
+  const Heading = level === 1 ? "h1" : "h2";
   return (
     <header className="pageHeader">
       <div>
         <p className="eyebrow">{data.business.name}</p>
-        <h1>{t(title)}</h1>
+        <Heading>{t(title)}</Heading>
       </div>
       {children}
     </header>
@@ -80,7 +83,10 @@ export function Fields({ fields, form, setForm }) {
             id: `${fieldId}-${field.name}`,
             name: field.name,
             value: form[field.name] ?? "",
-            required: field.required,
+            required:
+              typeof field.required === "function"
+                ? field.required(form)
+                : field.required,
             disabled: field.disabled,
             placeholder: field.placeholder ? t(field.placeholder) : undefined,
             onChange: (event) =>
@@ -141,6 +147,7 @@ export function Editor({
   fields,
   initial,
   evidence = false,
+  receiptRequired = true,
   subtitle,
   onSave,
   onClose,
@@ -154,6 +161,10 @@ export function Editor({
   useEffect(() => {
     dialog.current.showModal();
   }, []);
+  const needsReceipt =
+    typeof receiptRequired === "function"
+      ? receiptRequired(form)
+      : receiptRequired;
   async function submit(event) {
     event.preventDefault();
     setSaving(true);
@@ -162,11 +173,11 @@ export function Editor({
       const { reference_number, evidence_at, reference_description, ...body } =
         form;
       if (evidence) {
-        if (!reference_number?.trim() && !evidence_at && !files.length)
+        if (needsReceipt && !reference_number?.trim())
           throw new Error("evidenceRequired");
         body.reference = {
           reference_number,
-          evidence_at: evidence_at ? new Date(evidence_at).toISOString() : "",
+          evidence_at: evidence_at || "",
           description: reference_description,
           files: await encodeFiles(files),
         };
@@ -207,11 +218,17 @@ export function Editor({
         {evidence && (
           <section className="evidencePanel">
             <h3>{t("reference")}</h3>
-            <p className="fieldHint">{t("evidenceHint")}</p>
+            <p className="fieldHint">
+              {t(needsReceipt ? "evidenceHint" : "optionalEvidenceHint")}
+            </p>
             <Fields
               fields={[
-                { name: "reference_number" },
-                { name: "evidence_at", type: "datetime-local" },
+                {
+                  name: "reference_number",
+                  required: needsReceipt,
+                  maxLength: 200,
+                },
+                { name: "evidence_at", type: "date" },
                 { name: "reference_description", type: "textarea", wide: true },
               ]}
               form={form}
@@ -241,6 +258,7 @@ export function References({ transactionId, occurrenceId }) {
   const { t } = useLanguage(),
     { data, date, editor, mutate } = useWorkspace();
   const [adding, setAdding] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
   const references = data.references.filter((reference) =>
     transactionId
       ? reference.transaction_id === transactionId
@@ -256,9 +274,23 @@ export function References({ transactionId, occurrenceId }) {
           {data.attachments
             .filter((file) => file.reference_id === reference.id)
             .map((file) => (
-              <a key={file.id} href={file.download_url} className="fileLink">
-                {file.original_name} · {Math.ceil(file.size_bytes / 1024)} KB ↓
-              </a>
+              <div key={file.id} className="attachmentActions">
+                <button
+                  type="button"
+                  className="linkButton fileLink"
+                  onClick={() => setPreviewFile(file)}
+                  aria-label={`${t("previewFile")}: ${file.original_name}`}
+                >
+                  {file.original_name} · {Math.ceil(file.size_bytes / 1024)} KB
+                </button>
+                <a
+                  href={file.download_url}
+                  className="fileLink"
+                  aria-label={`${t("downloadFile")}: ${file.original_name}`}
+                >
+                  ↓
+                </a>
+              </div>
             ))}
         </div>
       ))}
@@ -267,10 +299,22 @@ export function References({ transactionId, occurrenceId }) {
           {t("addReference")}
         </button>
       )}
+      {previewFile && (
+        <FilePreview
+          key={previewFile.id}
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
       {adding && (
         <Editor
           title="addReference"
           fields={[]}
+          receiptRequired={
+            !isPropertyIncome(
+              data.transactions.find((tx) => tx.id === transactionId),
+            )
+          }
           evidence
           onClose={() => setAdding(false)}
           onSave={(body) =>

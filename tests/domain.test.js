@@ -88,19 +88,20 @@ test("transactions require real explicit evidence rather than a creation timesta
     );
   assert.equal(project(demo.project.id).available_cents, 925000);
 });
-test("number-only, timestamp-only, and file-only references are accepted", () => {
+test("receipt IDs are required for expenses while reference dates and attachments are optional", () => {
+  const file = {
+    name: "receipt.txt",
+    type: "text/plain",
+    data: Buffer.from("receipt").toString("base64"),
+  };
+  for (const reference of [{ evidence_at: "2026-10-18" }, { files: [file] }])
+    assert.throws(
+      () => store.createTransaction(demo.owner, txBody(reference)),
+      code("evidenceRequired"),
+    );
   for (const reference of [
     { reference_number: "R-1" },
-    { evidence_at: "2026-10-18T12:30:00Z" },
-    {
-      files: [
-        {
-          name: "receipt.txt",
-          type: "text/plain",
-          data: Buffer.from("receipt").toString("base64"),
-        },
-      ],
-    },
+    { reference_number: "R-2", files: [file] },
   ]) {
     const { id } = store.createTransaction(demo.owner, txBody(reference));
     assert.equal(
@@ -112,17 +113,33 @@ test("number-only, timestamp-only, and file-only references are accepted", () =>
       1,
     );
   }
-  assert.equal(project(demo.project.id).available_cents, 925000 - 3075);
+  assert.equal(project(demo.project.id).available_cents, 925000 - 2050);
 });
 
-test("evidence timestamps must contain a valid date and explicit time zone", () => {
-  for (const evidence_at of [
-    "2026-02-30T12:00:00Z",
+test("references accept dates without times and reject invalid dates and timestamps", () => {
+  const { id } = store.createTransaction(
+    demo.owner,
+    txBody({ reference_number: "DATE-ONLY", evidence_at: "2026-10-18" }),
+  );
+  assert.equal(
+    db
+      .prepare(
+        "SELECT evidence_at FROM evidence_references WHERE transaction_id = ?",
+      )
+      .get(id).evidence_at,
     "2026-10-18",
+  );
+  for (const evidence_at of [
+    "2026-02-30",
+    "2026-10-18T12:00:00Z",
     "2026-10-18T12:00:00",
   ]) {
     assert.throws(
-      () => store.createTransaction(demo.owner, txBody({ evidence_at })),
+      () =>
+        store.createTransaction(
+          demo.owner,
+          txBody({ reference_number: "BAD-DATE", evidence_at }),
+        ),
       code("invalidDate"),
     );
   }
@@ -133,7 +150,10 @@ test("malformed evidence and failed transactions do not leave files or rows behi
     () =>
       store.createTransaction(
         demo.owner,
-        txBody({ files: [{ name: "bad", data: "??" }] }),
+        txBody({
+          reference_number: "R-test",
+          files: [{ name: "bad", data: "??" }],
+        }),
       ),
     code("invalidFile"),
   );
@@ -144,13 +164,16 @@ test("malformed evidence and failed transactions do not leave files or rows behi
     () =>
       store.createTransaction(
         demo.owner,
-        txBody({ files: [{ name: "receipt", data: "aGVsbG8=" }] }),
+        txBody({
+          reference_number: "R-test",
+          files: [{ name: "receipt", data: "aGVsbG8=" }],
+        }),
       ),
     /simulated failure/,
   );
   assert.deepEqual(readdirSync(uploadDir), before);
 });
-test("the database rejects a transaction without its own primary reference", () => {
+test("the database requires a primary reference for non-rent transactions", () => {
   assert.throws(
     () =>
       db
@@ -158,7 +181,7 @@ test("the database rejects a transaction without its own primary reference", () 
           "INSERT INTO transactions (id,business_id,project_id,name,date,amount_cents,type,primary_reference_id,created_by) VALUES ('bad',?,?, 'Bad','2026-10-18',100,'expense',NULL,?)",
         )
         .run(demo.owner.business_id, demo.project.id, demo.owner.id),
-    /NOT NULL/,
+    /CHECK constraint failed/,
   );
   const foreignReference = db
     .prepare("SELECT primary_reference_id FROM transactions WHERE id = ?")
@@ -178,12 +201,18 @@ test("the database rejects a transaction without its own primary reference", () 
 });
 test("processing payments create no expense; processing once creates exactly one shared-evidence expense", () => {
   assert.equal(project(demo.second.id).available_cents, 1950000);
-  assert.equal(project(demo.second.id).projected_cents, 1925000);
+  assert.equal(project(demo.second.id).projected_cents, 1950000);
   const result = store.updatePayment(demo.owner, demo.processingPayment.id, {
     status: "processed",
   });
-  assert.equal(project(demo.second.id).available_cents, 1925000);
-  assert.equal(project(demo.second.id).projected_cents, 1925000);
+  assert.equal(project(demo.second.id).available_cents, 1950000);
+  assert.equal(project(demo.second.id).projected_cents, 1950000);
+  const expense = db
+    .prepare("SELECT * FROM transactions WHERE id = ?")
+    .get(result.transaction_id);
+  assert.equal(expense.project_id, null);
+  assert.equal(expense.property_id, null);
+  assert.ok(expense.bill_id);
   const reference = db
     .prepare("SELECT * FROM evidence_references WHERE occurrence_id = ?")
     .get(demo.processingOccurrence.id);
@@ -214,7 +243,7 @@ test("duplicate payment submissions cannot double-book an expense", () => {
   );
   assert.equal(one.id, two.id);
   assert.equal(one.transaction_id, two.transaction_id);
-  assert.equal(project(demo.project.id).available_cents, 895000);
+  assert.equal(project(demo.project.id).available_cents, 925000);
 });
 test("payments require evidence, the correct business account, and the full amount", () => {
   const occurrence = firstMonthly();
@@ -552,7 +581,6 @@ test("a schedule image is shared by recurring obligations and never counts as pa
   };
   const before = project(demo.project.id).available_cents;
   const created = store.createBill(demo.owner, {
-    project_id: demo.project.id,
     name: "Future card",
     amount: "80",
     first_due_date: "2027-06-18",
@@ -597,7 +625,7 @@ test("a schedule image is shared by recurring obligations and never counts as pa
     created.first_occurrence.id,
     paymentBody({ amount: "80", status: "processed" }),
   );
-  assert.equal(project(demo.project.id).available_cents, before - 8000);
+  assert.equal(project(demo.project.id).available_cents, before);
   assert.equal(
     store.billImage(demo.owner, created.id).storage_name,
     savedImage.storage_name,
@@ -627,7 +655,6 @@ test("invalid or oversized bill images roll back the schedule and upload, and SV
     assert.throws(
       () =>
         store.createBill(demo.owner, {
-          project_id: demo.project.id,
           name: "Bad image",
           amount: "1",
           first_due_date: "2026-10-18",
@@ -654,4 +681,228 @@ test("English and Spanish dictionaries have identical keys", () => {
       )
       .sort();
   assert.deepEqual(keys(translations.en), keys(translations.es));
+});
+
+test("properties support receipts, comments and files without linking to a project", () => {
+  const property = store.saveProperty(demo.owner, {
+    name: "Rental",
+    address: "123 Main",
+    tenant_name: "Tenant",
+    monthly_rent: "1200",
+  });
+  const { id } = store.createTransaction(demo.owner, {
+    ...txBody({
+      reference_number: "RENT-1",
+      files: [{ name: "receipt.txt", type: "text/plain", data: "aGVsbG8=" }],
+    }),
+    project_id: null,
+    property_id: property.id,
+    type: "income",
+    amount: "1200",
+  });
+  store.saveComment(demo.owner, { transaction_id: id, text: "Rent received" });
+  const data = store.workspace(demo.owner);
+  assert.equal(data.properties[0].monthly_rent_cents, 120000);
+  assert.equal(data.transactions.find((tx) => tx.id === id).project_id, null);
+  const reference = data.references.find((ref) => ref.transaction_id === id);
+  const file = data.attachments.find(
+    (file) => file.reference_id === reference.id,
+  );
+  assert.ok(store.attachment(demo.owner, file.id));
+  const employee = db
+    .prepare("SELECT * FROM users WHERE id = ?")
+    .get(demo.employee.id);
+  assert.deepEqual(store.workspace(employee).properties, []);
+  assert.throws(() => store.attachment(employee, file.id), code("notFound"));
+  assert.throws(
+    () =>
+      store.saveComment(employee, { transaction_id: id, text: "No access" }),
+    code("notFound"),
+  );
+  const other = store.createBusiness({
+    name: "Other",
+    business_name: "Other business",
+    email: "other@property.example",
+    password: "Password123",
+  });
+  assert.throws(() => store.property(other, property.id), code("notFound"));
+  assert.throws(
+    () =>
+      store.createTransaction(other, {
+        ...txBody({ reference_number: "R" }),
+        project_id: null,
+        property_id: property.id,
+      }),
+    code("notFound"),
+  );
+  store.voidTransaction(demo.owner, id);
+  assert.equal(project(demo.project.id).available_cents, 925000);
+});
+test("manual transactions require exactly one destination, projects default to zero budget, and bills reject destinations", () => {
+  const property = store.saveProperty(demo.owner, {
+    name: "Rental",
+    address: "123 Main",
+  });
+  assert.throws(
+    () =>
+      store.createTransaction(demo.owner, {
+        ...txBody({ reference_number: "R" }),
+        property_id: property.id,
+      }),
+    code("transactionTarget"),
+  );
+  assert.throws(
+    () =>
+      store.createTransaction(demo.owner, {
+        ...txBody({ reference_number: "R" }),
+        project_id: null,
+      }),
+    code("transactionTarget"),
+  );
+  const result = store.saveProject(demo.owner, {
+    name: "No budget",
+    start_date: "2026-10-18",
+  });
+  assert.equal(project(result.id).budget_cents, 0);
+  assert.throws(
+    () =>
+      store.createBill(demo.owner, {
+        name: "Bill",
+        project_id: demo.project.id,
+        amount: "1",
+        first_due_date: "2026-10-18",
+        recurrence: "once",
+      }),
+    code("standaloneBill"),
+  );
+  assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+});
+
+test("property income needs only amount and date and does not create an empty reference", () => {
+  const property = store.saveProperty(demo.owner, {
+    name: "Rental",
+    address: "123 Main",
+  });
+  for (const reference of [
+    undefined,
+    {},
+    { reference_number: "  ", files: [] },
+  ]) {
+    const { id } = store.createTransaction(demo.owner, {
+      property_id: property.id,
+      type: "income",
+      amount: "900",
+      date: "2026-10-18",
+      reference,
+    });
+    const tx = db.prepare("SELECT * FROM transactions WHERE id = ?").get(id);
+    assert.equal(tx.name, "Rent income");
+    assert.equal(tx.primary_reference_id, null);
+    assert.equal(
+      db
+        .prepare(
+          "SELECT count(*) AS n FROM evidence_references WHERE transaction_id = ?",
+        )
+        .get(id).n,
+      0,
+    );
+    assert.throws(
+      () =>
+        store.createTransaction(demo.owner, {
+          property_id: property.id,
+          type: "refund",
+          name: "Refund",
+          amount: "10",
+          date: "2026-10-18",
+          reference,
+        }),
+      code("evidenceRequired"),
+    );
+    assert.throws(
+      () =>
+        store.createTransaction(demo.owner, {
+          ...txBody(reference),
+          type: "income",
+        }),
+      code("evidenceRequired"),
+    );
+  }
+  for (const body of [
+    { amount: "0", date: "2026-10-18" },
+    { amount: "10" },
+    { date: "2026-10-18" },
+  ])
+    assert.throws(() =>
+      store.createTransaction(demo.owner, {
+        property_id: property.id,
+        type: "income",
+        ...body,
+      }),
+    );
+  assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+});
+test("property income can include an attachment or date without a receipt ID and add references later", () => {
+  const property = store.saveProperty(demo.owner, {
+    name: "Rental",
+    address: "123 Main",
+  });
+  const body = {
+    property_id: property.id,
+    type: "income",
+    amount: "900",
+    date: "2026-10-18",
+  };
+  const { id } = store.createTransaction(demo.owner, {
+    ...body,
+    reference: {
+      evidence_at: "2026-10-18",
+      files: [{ name: "rent.txt", type: "text/plain", data: "aGVsbG8=" }],
+    },
+  });
+  const reference = store
+    .workspace(demo.owner)
+    .references.find((ref) => ref.transaction_id === id);
+  assert.equal(reference.reference_number, null);
+  assert.equal(reference.evidence_at, "2026-10-18");
+  assert.ok(
+    store
+      .workspace(demo.owner)
+      .attachments.some((file) => file.reference_id === reference.id),
+  );
+  const noReference = store.createTransaction(demo.owner, body);
+  assert.throws(
+    () => store.addReference(demo.owner, { transaction_id: noReference.id }),
+    code("referenceDetailsRequired"),
+  );
+  const added = store.addReference(demo.owner, {
+    transaction_id: noReference.id,
+    description: "Paid by transfer",
+    evidence_at: "2026-10-18",
+  });
+  assert.equal(
+    db
+      .prepare("SELECT primary_reference_id FROM transactions WHERE id = ?")
+      .get(noReference.id).primary_reference_id,
+    added.id,
+  );
+});
+test("legacy reference timestamps display as dates in the business timezone without changing stored data", () => {
+  const ref = db
+    .prepare("SELECT primary_reference_id FROM transactions WHERE id = ?")
+    .get(demo.expense.id).primary_reference_id;
+  db.prepare("UPDATE evidence_references SET evidence_at = ? WHERE id = ?").run(
+    "2026-10-18T01:00:00Z",
+    ref,
+  );
+  assert.equal(
+    store.workspace(demo.owner).references.find((item) => item.id === ref)
+      .evidence_at,
+    "2026-10-17",
+  );
+  assert.equal(
+    db
+      .prepare("SELECT evidence_at FROM evidence_references WHERE id = ?")
+      .get(ref).evidence_at,
+    "2026-10-18T01:00:00Z",
+  );
 });

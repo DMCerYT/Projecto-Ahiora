@@ -30,6 +30,14 @@ export function openDatabase(path = process.env.DB_PATH || defaultDbPath) {
     const migrations = [
       new URL("./migrations/001-domain.sql", import.meta.url),
       new URL("./migrations/002-bill-images.sql", import.meta.url),
+      new URL(
+        "./migrations/003-properties-and-standalone-bills.sql",
+        import.meta.url,
+      ),
+      new URL(
+        "./migrations/004-optional-property-income-references.sql",
+        import.meta.url,
+      ),
     ];
     migrations.forEach((url, index) => {
       const version = index + 1;
@@ -39,16 +47,21 @@ export function openDatabase(path = process.env.DB_PATH || defaultDbPath) {
           .get(version)
       )
         return;
-      db.exec("BEGIN IMMEDIATE");
+      // Rebuilding referenced tables requires disabling FK enforcement outside the transaction.
+      db.exec("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE");
       try {
         db.exec(readFileSync(url, "utf8"));
         db.prepare("INSERT INTO schema_migrations (version) VALUES (?)").run(
           version,
         );
+        if (db.prepare("PRAGMA foreign_key_check").all().length)
+          throw new Error("Migration failed foreign key validation");
         db.exec("COMMIT");
       } catch (error) {
         db.exec("ROLLBACK");
         throw error;
+      } finally {
+        db.exec("PRAGMA foreign_keys = ON");
       }
     });
     return db;

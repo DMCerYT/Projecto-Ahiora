@@ -53,7 +53,7 @@ export function createApp({
       ) {
         const origin = new URL(req.headers.origin);
         if (origin.host !== req.headers.host)
-          throw new DomainError("forbidden", 403);
+          throw new DomainError("invalidOrigin", 403);
       }
       if (
         req.method === "POST" &&
@@ -282,7 +282,7 @@ export function createApp({
         return;
       }
       const match = url.pathname.match(
-        /^\/api\/(projects|contractors|billing-accounts|team|transactions|bills|payments|comments|references)(?:\/([^/]+))?(?:\/(void|pause))?$/,
+        /^\/api\/(properties|projects|contractors|billing-accounts|team|transactions|bills|payments|comments|references)(?:\/([^/]+))?(?:\/(void|pause))?$/,
       );
       if (!match) throw new DomainError("notFound", 404);
       const [, entity, id, action] = match;
@@ -306,6 +306,7 @@ export function createApp({
       else {
         const body = await readJson(req);
         const save = {
+          properties: "saveProperty",
           projects: "saveProject",
           contractors: "saveContractor",
           "billing-accounts": "saveAccount",

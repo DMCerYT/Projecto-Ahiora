@@ -2,43 +2,28 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
-import { apiRequest } from "../lib/apiClient.js";
 import { ErrorBox } from "./DomainUI.jsx";
 import MobileChrome from "./MobileChrome.jsx";
 import { useMobile } from "../lib/useMobile.js";
+import { DesktopIcon } from "./DesktopUI.jsx";
+import businessIcon from "../assets/desktop/business.svg";
+import userIcon from "../assets/desktop/user.svg";
+import logoutIcon from "../assets/desktop/logout.svg";
 
 export default function Layout({ onSignOut, children }) {
-  const { language, setLanguage, t } = useLanguage(),
-    { data, user, setUser, editor } = useWorkspace();
-  const [error, setError] = useState(null);
-  const [mobileOverlay, setMobileOverlay] = useState(null);
+  const { t } = useLanguage(),
+    { data, user, editor } = useWorkspace();
+  const [error, setError] = useState(null),
+    [mobileOverlay, setMobileOverlay] = useState(null);
   const mobile = useMobile();
   const items = [
-    ["/", "dashboard"],
-    ["/projects", "projects"],
-    ["/transactions", "transactions"],
-    ["/bills", "bills"],
-    ["/contractors", "contractors"],
-    ...(editor
-      ? [
-          ["/team", "team"],
-          ["/settings", "settings"],
-        ]
-      : []),
+    ["/", "dashboard", "home"],
+    ...(editor ? [["/properties", "properties", "propertyNav"]] : []),
+    ["/projects", "projects", "projectNav"],
+    ["/transactions", "transactions", "transactions"],
+    ["/contractors", "contractors", "contractors"],
+    ["/settings", "settings", "settings"],
   ];
-  async function changeLanguage(next) {
-    setError(null);
-    try {
-      const { user: updated } = await apiRequest("/api/me/language", {
-        method: "PUT",
-        body: JSON.stringify({ preferred_language: next }),
-      });
-      setUser(updated);
-      setLanguage(next);
-    } catch (nextError) {
-      setError(nextError);
-    }
-  }
   return (
     <div className="appShell">
       <MobileChrome
@@ -47,39 +32,36 @@ export default function Layout({ onSignOut, children }) {
         setOverlay={setMobileOverlay}
         onSignOut={onSignOut}
       />
-      <aside className="sidebar">
-        <div>
-          <p className="eyebrow">{data.business.name}</p>
-          <h1>Ahiora</h1>
+      <header className="desktopHeader">
+        <div className="desktopBusiness">
+          <img src={businessIcon} alt="" />
+          <p>{data.business.name}</p>
         </div>
+        <div className="desktopUser">
+          <img src={userIcon} alt="" />
+          <span>{t("loggedInAs", { name: user.name })}</span>
+          <button
+            type="button"
+            aria-label={t("signOut")}
+            onClick={() => {
+              if (window.confirm(t("logoutQuestion")))
+                onSignOut().catch(setError);
+            }}
+          >
+            <img src={logoutIcon} alt="" />
+          </button>
+        </div>
+      </header>
+      <aside className="sidebar">
         <nav className="navList" aria-label={t("navigation")}>
-          {items.map(([to, label]) => (
+          {items.map(([to, label, icon]) => (
             <NavLink key={to} to={to} end={to === "/"}>
+              <DesktopIcon name={icon} />
               {t(label)}
             </NavLink>
           ))}
         </nav>
-        <div className="accountBox">
-          <strong>{user.name}</strong>
-          <span>{t(`statuses.${user.role}`)}</span>
-          <label className="languageControl">
-            {t("language")}
-            <select
-              value={language}
-              onChange={(event) => changeLanguage(event.target.value)}
-            >
-              <option value="en">English</option>
-              <option value="es">Español</option>
-            </select>
-          </label>
-          <ErrorBox error={error} />
-          <button
-            className="secondaryButton"
-            onClick={() => onSignOut().catch(setError)}
-          >
-            {t("signOut")}
-          </button>
-        </div>
+        <ErrorBox error={error} />
       </aside>
       <main className="mainContent" inert={mobile && Boolean(mobileOverlay)}>
         {children}

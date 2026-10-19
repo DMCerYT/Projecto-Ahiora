@@ -31,10 +31,10 @@ export default function MobileChrome({
   const [form, setForm] = useState(null),
     [signingOut, setSigningOut] = useState(false),
     [error, setError] = useState(null);
-  const mobileItems = editor ? items : [...items, ["/settings", "settings"]];
-  const hasProjects = data.projects.some(
-    (project) => project.status !== "archived",
-  );
+  const mobileItems = items;
+  const hasProjects =
+    data.properties.length > 0 ||
+    data.projects.some((project) => project.status !== "archived");
 
   useEffect(() => {
     setOverlay(null);

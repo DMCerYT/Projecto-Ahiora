@@ -1,5 +1,37 @@
 export const translations = {
   en: {
+    optionalEvidenceHint:
+      "References are optional for property income. You can add a receipt ID, date, notes, or attachments if needed.",
+    rentIncomeNameHint:
+      "For property income, leave the name blank to use Rent income.",
+    mainDashboard: "Main Dashboard",
+    propertyList: "Property List",
+    currentProjects: "Current Projects",
+    properties: "Properties",
+    property: "Property",
+    newProperty: "Add Property",
+    editProperty: "Edit Property",
+    tenant_name: "Tenant",
+    monthly_rent: "Monthly rent",
+    vacant: "Vacant",
+    rentHint: "Information only. Rent income is recorded with a transaction.",
+    currentBalance: "Current Balance",
+    lifetimeBalance: "Lifetime Balance",
+    timeframe: "Timeframe",
+    destination: "Project or property",
+    allDestinations: "All destinations",
+    noTargets: "Create a project or property before recording a transaction.",
+    projectBalanceHint:
+      "Balance = budget + income + refunds − expenses within the selected timeframe. Lifetime balance shows all recorded activity through today. Budgets default to zero and can be edited.",
+    propertyBalanceHint:
+      "Balance = income + refunds − expenses within the selected timeframe. Income and refunds are also shown separately.",
+    periods: {
+      ytd: "Year to date",
+      month: "This month",
+      threeMonths: "Past 3 months",
+      year: "Past year",
+      lifetime: "Lifetime",
+    },
     transactionWelcome: "Record a transaction with me!",
     billWelcome: "Are you ready to pay a bill?",
     selectProject: "Select a Project",
@@ -7,7 +39,7 @@ export const translations = {
     transactionNameHint: "Ex: Tools for Contractor",
     transactionType: "Type of Transaction",
     transactionDetails: "Transaction details",
-    addEvidence: "Add your evidence",
+    addEvidence: "Receipt & attachments",
     saveTransaction: "Save transaction",
     continue: "Continue",
     back: "Back",
@@ -132,7 +164,7 @@ export const translations = {
     allBills: "View bills",
     reminderHint:
       "Bills overdue or due within 7 days, plus payments still processing. Reminders are shown in this workspace.",
-    calendar: "Payments & project activity",
+    calendar: "Payments & activity",
     calendarHint:
       "Select an entry to view its details. Due dates and payment dates are shown separately; payment expenses appear once.",
     allProjects: "All projects",
@@ -152,18 +184,24 @@ export const translations = {
     viewProject: "View project",
     newTransaction: "Record transaction",
     transactionHint:
-      "Every transaction requires evidence. To correct a manual transaction, void it and record a replacement; history is retained.",
+      "Transactions belong to a project or property. Bill payments remain separate.",
     voidTransaction: "Void transaction",
     voidConfirm:
       "Void this transaction? Its effect on the project balance will be reversed and its evidence retained.",
     reference: "Reference / evidence",
     references: "Supporting evidence",
     reference_number: "Receipt or confirmation number",
-    evidence_at: "Evidence date & time",
+    evidence_at: "Reference date (optional)",
     reference_description: "Evidence notes",
     evidenceHint:
-      "Provide at least one: a receipt/confirmation number, an explicit date and time, or a file. The creation timestamp does not count as evidence.",
-    files: "Receipt images & attachments",
+      "A receipt or reference ID is required. Attachments, reference date, and notes are optional.",
+    previewFile: "Preview file",
+    downloadFile: "Download file",
+    previewFailed:
+      "Could not load this preview. Try again or download the file.",
+    previewUnavailable:
+      "Preview is unavailable for this file type. Download the file to open it.",
+    files: "Attachments (optional)",
     fileHint:
       "Up to 5 files; maximum 8 MB each and 16 MB per request including encoding.",
     addReference: "Add evidence",
@@ -179,7 +217,7 @@ export const translations = {
     openBills: "Outstanding through selected month",
     allInMonth: "All occurrences in selected month",
     paymentHint:
-      "Recording payment requires evidence and an account. Processing payments affect the projected balance; only processed payments create expenses.",
+      "Recording payment requires a receipt ID and payment account. Only processed payments create standalone bill expenses; property and project balances are unaffected.",
     monthlyHint:
       "Optional; defaults to the first due date’s day. The 29th–31st clamp to the last day in shorter months.",
     billSchedules: "Bill schedules",
@@ -248,7 +286,7 @@ export const translations = {
     errors: {
       invalidImage: "Choose a PNG, JPEG or WebP image, up to 8 MB.",
       required: "Complete all required fields.",
-      invalidDate: "Enter a valid date, date/time, or calendar month.",
+      invalidDate: "Enter a valid date or calendar month.",
       invalidAmount:
         "Enter a positive amount with at most two decimal places (budgets may be zero).",
       invalidOption: "Choose a valid option.",
@@ -257,16 +295,22 @@ export const translations = {
       emailExists: "An account with this email already exists.",
       invalidCredentials: "Invalid email or password.",
       forbidden: "Your role does not permit this action.",
+      invalidOrigin:
+        "The request came from an unexpected address. Reload the page and try again.",
       unauthorized: "Your session has expired. Sign in again.",
-      notFound: "This record is unavailable or outside your assigned projects.",
+      notFound: "This record is unavailable or you do not have access.",
       archived:
         "Restore the archived project before changing its financial records.",
       ownerLocked: "The owner cannot be changed through team management.",
       contactRequired: "Provide an email, phone number, or address.",
       invalidTimeZone: "Enter a valid time zone, such as America/New_York.",
       currencyLocked: "Currency cannot change after transactions exist.",
-      evidenceRequired:
-        "Add a receipt number, evidence date/time, or file attachment.",
+      transactionTarget: "Choose exactly one project or property.",
+      standaloneBill:
+        "Bills are standalone; do not assign a project or property.",
+      referenceDetailsRequired:
+        "Add a receipt ID, date, note, or attachment, or close this form.",
+      evidenceRequired: "Enter a receipt or reference ID.",
       invalidFile: "Check the file contents, count, and size limits.",
       referenceTarget:
         "Evidence must belong to a transaction or bill occurrence. Shared evidence must describe the same payment.",
@@ -289,6 +333,40 @@ export const translations = {
     },
   },
   es: {
+    optionalEvidenceHint:
+      "Los comprobantes son opcionales para los ingresos de propiedades. Puedes agregar número de recibo, fecha, notas o archivos si lo necesitas.",
+    rentIncomeNameHint:
+      "Para ingresos de propiedades, deja el nombre vacío para usar Ingreso de alquiler.",
+    mainDashboard: "Panel principal",
+    propertyList: "Lista de propiedades",
+    currentProjects: "Proyectos actuales",
+    properties: "Propiedades",
+    property: "Propiedad",
+    newProperty: "Agregar propiedad",
+    editProperty: "Editar propiedad",
+    tenant_name: "Inquilino",
+    monthly_rent: "Alquiler mensual",
+    vacant: "Desocupada",
+    rentHint:
+      "Solo informativo. Registra los ingresos de alquiler mediante una transacción.",
+    currentBalance: "Saldo actual",
+    lifetimeBalance: "Saldo acumulado",
+    timeframe: "Período",
+    destination: "Proyecto o propiedad",
+    allDestinations: "Todos los destinos",
+    noTargets:
+      "Crea un proyecto o propiedad antes de registrar una transacción.",
+    projectBalanceHint:
+      "Saldo = presupuesto + ingresos + reembolsos − gastos del período seleccionado. El saldo acumulado incluye toda la actividad hasta hoy. El presupuesto inicial es cero y se puede editar.",
+    propertyBalanceHint:
+      "Saldo = ingresos + reembolsos − gastos del período seleccionado. Los ingresos y reembolsos también se muestran por separado.",
+    periods: {
+      ytd: "Año hasta la fecha",
+      month: "Este mes",
+      threeMonths: "Últimos 3 meses",
+      year: "Último año",
+      lifetime: "Histórico",
+    },
     transactionWelcome: "¡Registra una transacción conmigo!",
     billWelcome: "¿Listo para pagar una factura?",
     selectProject: "Selecciona un proyecto",
@@ -296,7 +374,7 @@ export const translations = {
     transactionNameHint: "Ej.: Herramientas para contratista",
     transactionType: "Tipo de transacción",
     transactionDetails: "Detalles de la transacción",
-    addEvidence: "Agrega tu comprobante",
+    addEvidence: "Recibo y archivos",
     saveTransaction: "Guardar transacción",
     continue: "Continuar",
     back: "Atrás",
@@ -421,7 +499,7 @@ export const translations = {
     allBills: "Ver facturas",
     reminderHint:
       "Facturas vencidas o que vencen en 7 días, además de pagos en proceso. Los recordatorios se muestran en este espacio.",
-    calendar: "Pagos y actividad de proyectos",
+    calendar: "Pagos y actividad",
     calendarHint:
       "Selecciona un evento para ver sus detalles. Los vencimientos y las fechas de pago se muestran por separado; los gastos de pagos aparecen una sola vez.",
     allProjects: "Todos los proyectos",
@@ -441,18 +519,24 @@ export const translations = {
     viewProject: "Ver proyecto",
     newTransaction: "Registrar transacción",
     transactionHint:
-      "Cada transacción requiere un comprobante. Para corregir una transacción manual, anúlala y registra otra; se conserva el historial.",
+      "Las transacciones pertenecen a un proyecto o propiedad. Los pagos de facturas son independientes.",
     voidTransaction: "Anular transacción",
     voidConfirm:
       "¿Anular esta transacción? Se revertirá su efecto en el saldo y se conservarán sus comprobantes.",
     reference: "Referencia / comprobante",
     references: "Comprobantes",
     reference_number: "Número de recibo o confirmación",
-    evidence_at: "Fecha y hora del comprobante",
+    evidence_at: "Fecha del comprobante (opcional)",
     reference_description: "Notas del comprobante",
     evidenceHint:
-      "Proporciona al menos uno: número de recibo o confirmación, fecha y hora explícitas, o archivo. La fecha de creación no cuenta como comprobante.",
-    files: "Imágenes de recibos y archivos",
+      "El número de recibo o referencia es obligatorio. Los archivos, la fecha y las notas son opcionales.",
+    previewFile: "Vista previa del archivo",
+    downloadFile: "Descargar archivo",
+    previewFailed:
+      "No se pudo cargar la vista previa. Intenta de nuevo o descarga el archivo.",
+    previewUnavailable:
+      "La vista previa no está disponible para este tipo de archivo. Descarga el archivo para abrirlo.",
+    files: "Archivos adjuntos (opcionales)",
     fileHint:
       "Hasta 5 archivos; máximo 8 MB por archivo y 16 MB por solicitud, incluida la codificación.",
     addReference: "Agregar comprobante",
@@ -468,7 +552,7 @@ export const translations = {
     openBills: "Pendientes hasta el mes seleccionado",
     allInMonth: "Todos los vencimientos del mes",
     paymentHint:
-      "Registrar un pago requiere comprobante y cuenta. Los pagos en proceso afectan el saldo proyectado; solo los procesados generan gastos.",
+      "Registrar un pago requiere número de recibo y cuenta. Solo los pagos procesados generan gastos independientes; no afectan los saldos de propiedades o proyectos.",
     monthlyHint:
       "Opcional; usa el día del primer vencimiento. Los días 29–31 se ajustan al último día de los meses más cortos.",
     billSchedules: "Facturas programadas",
@@ -536,7 +620,7 @@ export const translations = {
     },
     errors: {
       required: "Completa los campos obligatorios.",
-      invalidDate: "Introduce una fecha, fecha y hora o mes válidos.",
+      invalidDate: "Introduce una fecha o mes válidos.",
       invalidAmount:
         "Introduce un monto positivo con hasta dos decimales (el presupuesto puede ser cero).",
       invalidOption: "Selecciona una opción válida.",
@@ -545,6 +629,8 @@ export const translations = {
       emailExists: "Ya existe una cuenta con este correo.",
       invalidCredentials: "Correo o contraseña incorrectos.",
       forbidden: "Tu rol no permite esta acción.",
+      invalidOrigin:
+        "La solicitud proviene de una dirección inesperada. Recarga la página e inténtalo de nuevo.",
       unauthorized: "Tu sesión venció. Inicia sesión otra vez.",
       notFound:
         "El registro no está disponible o está fuera de tus proyectos asignados.",
@@ -557,8 +643,12 @@ export const translations = {
         "Introduce una zona horaria válida, como America/New_York.",
       currencyLocked:
         "No se puede cambiar la moneda después de registrar transacciones.",
-      evidenceRequired:
-        "Agrega un número de recibo, fecha y hora del comprobante, o archivo.",
+      transactionTarget: "Selecciona un solo proyecto o propiedad.",
+      standaloneBill:
+        "Las facturas son independientes; no asignes un proyecto o propiedad.",
+      referenceDetailsRequired:
+        "Agrega un número de recibo, fecha, nota o archivo, o cierra este formulario.",
+      evidenceRequired: "Introduce un número de recibo o referencia.",
       invalidImage: "Selecciona una imagen PNG, JPEG o WebP, de hasta 8 MB.",
       invalidFile:
         "Revisa el contenido, la cantidad y el tamaño de los archivos.",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
 import {
@@ -16,7 +16,7 @@ import {
   useAction,
 } from "../components/DomainUI.jsx";
 
-export default function BillsPage() {
+export default function BillsPage({ embedded = false }) {
   const { t } = useLanguage(),
     { data, editor, money, date, mutate, month, setMonth, loading } =
       useWorkspace(),
@@ -25,9 +25,6 @@ export default function BillsPage() {
     [paying, setPaying] = useState(null),
     [filter, setFilter] = useState("open");
   const action = useAction();
-  const projects = data.projects
-    .filter((project) => project.status !== "archived")
-    .map((project) => ({ value: project.id, label: project.name }));
   const accounts = data.billing_accounts.map((account) => ({
     value: account.id,
     label: `${account.name} ${account.masked_identifier}`,
@@ -44,17 +41,46 @@ export default function BillsPage() {
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
   return (
     <div className="pageStack">
-      <PageTitle title="bills">
+      <PageTitle title="bills" level={embedded ? 2 : 1}>
         {editor && (
-          <button
-            className="primaryButton"
-            disabled={!projects.length}
-            onClick={() => setCreating(true)}
-          >
+          <button className="primaryButton" onClick={() => setCreating(true)}>
             {t("newBill")}
           </button>
         )}
       </PageTitle>
+      <section className="billReminders">
+        <h2>{t("reminders")}</h2>
+        <p className="fieldHint">{t("reminderHint")}</p>
+        {data.occurrences.filter((row) =>
+          ["overdue", "due_soon", "processing"].includes(row.display_status),
+        ).length === 0 ? (
+          <Empty />
+        ) : (
+          <div className="recordList">
+            {data.occurrences
+              .filter((row) =>
+                ["overdue", "due_soon", "processing"].includes(
+                  row.display_status,
+                ),
+              )
+              .sort((a, b) => a.due_date.localeCompare(b.due_date))
+              .map((row) => (
+                <Link
+                  className="listRow"
+                  key={row.id}
+                  to={`/transactions?tab=bills#${row.id}`}
+                >
+                  <strong>
+                    {data.bills.find((bill) => bill.id === row.bill_id)?.name}
+                  </strong>
+                  <span>{date(row.due_date)}</span>
+                  <strong>{money(row.amount_cents)}</strong>
+                  <Status value={row.display_status} />
+                </Link>
+              ))}
+          </div>
+        )}
+      </section>
       <ErrorBox error={action.error} />
       <section className="contentSection">
         <div className="sectionHeader">
@@ -112,14 +138,7 @@ export default function BillsPage() {
                         />
                         {bill.name}
                       </strong>
-                      <span>
-                        {date(row.due_date)} ·{" "}
-                        {
-                          data.projects.find(
-                            (project) => project.id === bill.project_id,
-                          )?.name
-                        }
-                      </span>
+                      <span>{date(row.due_date)}</span>
                     </div>
                     <strong>{money(row.amount_cents)}</strong>
                     <Status value={row.display_status} />

@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { useWorkspace } from "../lib/WorkspaceContext.jsx";
+import {
+  targetOptions,
+  transactionTarget,
+  isPropertyIncomeDraft,
+} from "../lib/transactionTargets.js";
 import { encodeFiles } from "../lib/apiClient.js";
 import { unpaidBillChoices } from "../../shared/paymentChoices.js";
 import { Fields } from "./DomainUI.jsx";
@@ -41,10 +46,10 @@ function useDraft(initial) {
   return { form, setForm, files, setFiles, dirty };
 }
 
-async function withEvidence(form, files) {
+async function withEvidence(form, files, receiptRequired = true) {
   const { reference_number, evidence_at, reference_description, ...body } =
     form;
-  if (!reference_number?.trim() && !evidence_at && !files.length)
+  if (receiptRequired && !reference_number?.trim())
     throw new Error("evidenceRequired");
   if (files.length > 5 || files.some((file) => file.size > 8 * 1024 * 1024))
     throw new Error("invalidFile");
@@ -52,7 +57,7 @@ async function withEvidence(form, files) {
     ...body,
     reference: {
       reference_number,
-      evidence_at: evidence_at ? new Date(evidence_at).toISOString() : "",
+      evidence_at: evidence_at || "",
       description: reference_description,
       files: await encodeFiles(files),
     },
@@ -111,11 +116,20 @@ function TypeSelector({ value, onChange }) {
   );
 }
 
-export function MobileTransactionFlow({ projectId = "", onClose }) {
+export function MobileTransactionFlow({
+  projectId = "",
+  propertyId = "",
+  targetType,
+  onClose,
+}) {
   const { t } = useLanguage(),
     { data, mutate } = useWorkspace();
   const draft = useDraft({
-    project_id: projectId,
+    destination: propertyId
+      ? `property:${propertyId}`
+      : projectId
+        ? `project:${projectId}`
+        : "",
     name: "",
     date: data.today,
     type: "expense",
@@ -126,9 +140,7 @@ export function MobileTransactionFlow({ projectId = "", onClose }) {
   const [step, setStep] = useState(0),
     [saving, setSaving] = useState(false),
     [error, setError] = useState(null);
-  const projects = data.projects
-    .filter((project) => project.status !== "archived")
-    .map((project) => ({ value: project.id, label: project.name }));
+  const targets = targetOptions(data, t, targetType);
   async function submit(event) {
     event.preventDefault();
     setError(null);
@@ -139,7 +151,12 @@ export function MobileTransactionFlow({ projectId = "", onClose }) {
     if (saving) return;
     setSaving(true);
     try {
-      await mutate("transactions", await withEvidence(form, files));
+      await mutate(
+        "transactions",
+        transactionTarget(
+          await withEvidence(form, files, !isPropertyIncomeDraft(form)),
+        ),
+      );
       onClose();
     } catch (next) {
       setError(next);
@@ -177,17 +194,20 @@ export function MobileTransactionFlow({ projectId = "", onClose }) {
             <Fields
               fields={[
                 {
-                  name: "project_id",
-                  label: "selectProject",
+                  name: "destination",
+                  label: "destination",
                   type: "select",
-                  options: projects,
+                  options: targets,
                   required: true,
                 },
                 {
                   name: "name",
                   label: "transactionName",
                   placeholder: "transactionNameHint",
-                  required: true,
+                  required: !isPropertyIncomeDraft(form),
+                  hint: isPropertyIncomeDraft(form)
+                    ? "rentIncomeNameHint"
+                    : undefined,
                   maxLength: 200,
                 },
               ]}
@@ -198,7 +218,7 @@ export function MobileTransactionFlow({ projectId = "", onClose }) {
               value={form.type}
               onChange={(type) => setForm((old) => ({ ...old, type }))}
             />
-            {!projects.length && <p className="fieldHint">{t("noProjects")}</p>}
+            {!targets.length && <p className="fieldHint">{t("noTargets")}</p>}
           </>
         ) : step === 1 ? (
           <Fields
@@ -211,7 +231,10 @@ export function MobileTransactionFlow({ projectId = "", onClose }) {
             setForm={setForm}
           />
         ) : (
-          <FinanceEvidence {...draft} />
+          <FinanceEvidence
+            {...draft}
+            receiptRequired={!isPropertyIncomeDraft(form)}
+          />
         )}
         <StepActions
           step={step}
@@ -334,7 +357,6 @@ export function MobileBillScheduleFlow({ fields, onClose }) {
     { data, mutate, date, money } = useWorkspace();
   const draft = useDraft({
     name: "",
-    project_id: "",
     amount: "",
     first_due_date: data.today,
     recurrence: "monthly",
@@ -405,7 +427,7 @@ export function MobileBillScheduleFlow({ fields, onClose }) {
     );
   const fieldNames =
     step === 0
-      ? ["name", "project_id", "amount"]
+      ? ["name", "amount"]
       : step === 1
         ? ["first_due_date", "recurrence", "recurrence_day", "interval_days"]
         : ["payee_account_number", "billing_account_id"];
@@ -541,9 +563,6 @@ export function MobileBillPicker({ onClose, ScheduleEditor }) {
         <FinanceButton
           type="button"
           className="green"
-          disabled={
-            !data.projects.some((project) => project.status !== "archived")
-          }
           onClick={() => setCreating(true)}
         >
           {t("newBillScheme")}
@@ -563,10 +582,10 @@ export function MobileBillPicker({ onClose, ScheduleEditor }) {
                 key={item.row.id}
                 type="button"
                 className="mobileBillChoice"
-                aria-label={`${item.bill.name} · ${item.project.name} · ${date(item.row.due_date)} · ${money(item.row.amount_cents)}`}
+                aria-label={`${item.bill.name} · ${date(item.row.due_date)} · ${money(item.row.amount_cents)}`}
                 onClick={() => {
                   if (item.payment) {
-                    navigate(`/bills#${item.row.id}`);
+                    navigate(`/transactions?tab=bills#${item.row.id}`);
                     onClose();
                   } else setChoice(item);
                 }}

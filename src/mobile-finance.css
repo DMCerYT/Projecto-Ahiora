@@ -177,7 +177,7 @@
     color: #738999;
     opacity: 1;
   }
-  .mobileFinanceDialog input[type="datetime-local"] {
+  .mobileFinanceDialog input[type="date"] {
     font-size: 18px;
   }
   .mobileFinanceDialog input[type="file"] {

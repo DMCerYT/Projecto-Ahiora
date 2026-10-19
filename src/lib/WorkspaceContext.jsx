@@ -5,6 +5,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { financialTotals, inPeriod } from "../../shared/reporting.js";
 import { apiRequest } from "./apiClient.js";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 
@@ -15,6 +16,7 @@ export function WorkspaceProvider({ user, setUser, children }) {
     [error, setError] = useState(null),
     [month, setMonth] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [period, setPeriod] = useState("ytd");
   const load = useCallback(async () => {
     try {
       const { data: next } = await apiRequest(
@@ -108,6 +110,18 @@ export function WorkspaceProvider({ user, setUser, children }) {
         money,
         date,
         locale,
+        period,
+        setPeriod,
+        inPeriod: (tx) => inPeriod(tx, data.today, period),
+        totals: (target, id, budget = 0, lifetime = false) =>
+          financialTotals(
+            data.transactions.filter(
+              (tx) =>
+                tx[target] === id &&
+                inPeriod(tx, data.today, lifetime ? "lifetime" : period),
+            ),
+            budget,
+          ),
       }}
     >
       {children}

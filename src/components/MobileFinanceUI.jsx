@@ -150,16 +150,28 @@ export function BillImage({ bill, className = "" }) {
   );
 }
 
-export function FinanceEvidence({ form, setForm, files, setFiles }) {
+export function FinanceEvidence({
+  form,
+  setForm,
+  files,
+  setFiles,
+  receiptRequired = true,
+}) {
   const { t } = useLanguage();
   return (
     <section className="mobileFinanceEvidence">
       <h3>{t("reference")}</h3>
-      <p className="fieldHint">{t("evidenceHint")}</p>
+      <p className="fieldHint">
+        {t(receiptRequired ? "evidenceHint" : "optionalEvidenceHint")}
+      </p>
       <Fields
         fields={[
-          { name: "reference_number" },
-          { name: "evidence_at", type: "datetime-local" },
+          {
+            name: "reference_number",
+            required: receiptRequired,
+            maxLength: 200,
+          },
+          { name: "evidence_at", type: "date" },
           { name: "reference_description", type: "textarea" },
         ]}
         form={form}

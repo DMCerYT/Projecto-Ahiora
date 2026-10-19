@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { isPropertyIncome } from "../shared/evidence.js";
 import { hashPassword } from "./auth.js";
 import {
   addDays,
@@ -149,6 +150,51 @@ export class FinanceStore {
       requireThat(project.status !== "archived", "archived");
     }
     return project;
+  }
+  property(user, id, write = false) {
+    const property = this.row("properties", id, user);
+    // Property assignments are intentionally unavailable until Team is enabled.
+    requireThat(user.role !== "employee", "notFound", 404);
+    if (write) this.editor(user);
+    return property;
+  }
+  transactionAccess(user, transaction, write = false) {
+    if (transaction.project_id)
+      return this.project(user, transaction.project_id, write);
+    if (transaction.property_id)
+      return this.property(user, transaction.property_id, write);
+    this.billAccess(user, transaction.bill_id, write);
+  }
+  billAccess(user, id, write = false) {
+    const bill = this.row("bills", id, user);
+    requireThat(user.role !== "employee", "notFound", 404);
+    if (write) this.editor(user);
+    return bill;
+  }
+  saveProperty(user, body, id) {
+    this.editor(user);
+    const old = id ? this.property(user, id, true) : null;
+    const name = requiredText(body.name, 160),
+      address = requiredText(body.address, 500);
+    const tenant = text(body.tenant_name, 160),
+      rent = cents(body.monthly_rent || "0", true);
+    id ||= randomUUID();
+    return this.atomic(() => {
+      if (old)
+        this.db
+          .prepare(
+            "UPDATE properties SET name = ?, address = ?, tenant_name = ?, monthly_rent_cents = ? WHERE id = ?",
+          )
+          .run(name, address, tenant, rent, id);
+      else
+        this.db
+          .prepare(
+            "INSERT INTO properties (id, business_id, name, address, tenant_name, monthly_rent_cents) VALUES (?, ?, ?, ?, ?, ?)",
+          )
+          .run(id, user.business_id, name, address, tenant, rent);
+      this.audit(user, old ? "property.updated" : "property.created", id);
+      return { id };
+    });
   }
   business(user) {
     return this.db
@@ -320,7 +366,7 @@ export class FinanceStore {
       start = dateValue(body.start_date),
       end = body.end_date ? dateValue(body.end_date) : null;
     requireThat(!end || end >= start, "invalidDate");
-    const budget = cents(body.budget, true),
+    const budget = cents(body.budget ?? "0", true),
       status = option(body.status || "active", [
         "active",
         "completed",
@@ -414,7 +460,7 @@ export class FinanceStore {
   }
   createBill(user, body) {
     this.editor(user);
-    this.project(user, body.project_id, true);
+    requireThat(!body.project_id && !body.property_id, "standaloneBill");
     const name = requiredText(body.name, 160),
       amount = cents(body.amount),
       first = dateValue(body.first_due_date);
@@ -455,12 +501,11 @@ export class FinanceStore {
     return this.atomic(() => {
       this.db
         .prepare(
-          "INSERT INTO bills (id, business_id, project_id, name, payee_account_number, amount_cents, first_due_date, recurrence, recurrence_day, interval_days, billing_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO bills (id, business_id, name, payee_account_number, amount_cents, first_due_date, recurrence, recurrence_day, interval_days, billing_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .run(
           id,
           user.business_id,
-          body.project_id,
           name,
           text(body.payee_account_number, 160),
           amount,
@@ -534,8 +579,7 @@ export class FinanceStore {
       .run(billId, user.business_id, name, mime, buffer.length, storageName);
   }
   billImage(user, billId) {
-    const bill = this.row("bills", billId, user);
-    this.project(user, bill.project_id);
+    const bill = this.billAccess(user, billId);
     const image = this.db
       .prepare(
         "SELECT * FROM bill_images WHERE bill_id = ? AND business_id = ?",
@@ -573,9 +617,7 @@ export class FinanceStore {
     ).end;
     const selected = monthBounds(month);
     const bills = this.db
-      .prepare(
-        "SELECT bills.* FROM bills JOIN projects ON projects.id = bills.project_id WHERE bills.business_id = ? AND bills.active = 1 AND projects.status <> 'archived'",
-      )
+      .prepare("SELECT * FROM bills WHERE business_id = ? AND active = 1")
       .all(user.business_id);
     this.atomic(() => {
       const insert = this.db.prepare(
@@ -597,23 +639,29 @@ export class FinanceStore {
       }
     });
   }
-  referenceRaw(user, body, transactionId, occurrenceId) {
+  referenceRaw(
+    user,
+    body,
+    transactionId,
+    occurrenceId,
+    { receiptRequired = true, optional = false } = {},
+  ) {
     requireThat(transactionId || occurrenceId, "referenceTarget");
+    requireThat(
+      body == null || (typeof body === "object" && !Array.isArray(body)),
+      "invalidRequest",
+    );
     const referenceNumber = text(body?.reference_number, 200) || null;
     const evidenceAt = text(body?.evidence_at, 80) || null;
-    if (evidenceAt)
-      requireThat(
-        /^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:\d{2})$/.test(evidenceAt) &&
-          isDate(evidenceAt.slice(0, 10)) &&
-          Number.isFinite(Date.parse(evidenceAt)),
-        "invalidDate",
-      );
+    if (evidenceAt) dateValue(evidenceAt);
+    const description = text(body?.description, 2000);
     const files = body?.files ?? [];
     requireThat(Array.isArray(files) && files.length <= 5, "invalidFile");
-    requireThat(
-      referenceNumber || evidenceAt || files.length,
-      "evidenceRequired",
-    );
+    if (receiptRequired) requireThat(referenceNumber, "evidenceRequired");
+    else if (!referenceNumber && !evidenceAt && !description && !files.length) {
+      requireThat(optional, "referenceDetailsRequired");
+      return null;
+    }
     const decoded = files.map((file) => {
       requireThat(typeof file.data === "string", "invalidFile");
       const raw = file.data.includes(",")
@@ -647,8 +695,8 @@ export class FinanceStore {
         transactionId || null,
         occurrenceId || null,
         referenceNumber,
-        evidenceAt ? new Date(evidenceAt).toISOString() : null,
-        text(body?.description, 2000),
+        evidenceAt,
+        description,
         user.id,
       );
     for (const file of decoded) {
@@ -676,22 +724,37 @@ export class FinanceStore {
   }
   createTransaction(user, body) {
     this.editor(user);
-    this.project(user, body.project_id, true);
-    const name = requiredText(body.name, 200),
-      amount = cents(body.amount),
-      date = dateValue(body.date);
+    requireThat(
+      Boolean(body.project_id) !== Boolean(body.property_id) && !body.bill_id,
+      "transactionTarget",
+    );
+    if (body.project_id) this.project(user, body.project_id, true);
+    else this.property(user, body.property_id, true);
     const type = option(body.type, ["expense", "income", "refund"]),
+      rentIncome = isPropertyIncome(body),
+      name = rentIncome
+        ? text(body.name, 200) ||
+          (user.preferred_language === "es"
+            ? "Ingreso de alquiler"
+            : "Rent income")
+        : requiredText(body.name, 200),
+      amount = cents(body.amount),
+      date = dateValue(body.date),
       id = randomUUID();
     return this.atomic(() => {
-      const referenceId = this.referenceRaw(user, body.reference, id, null);
+      const referenceId = this.referenceRaw(user, body.reference, id, null, {
+        receiptRequired: !rentIncome,
+        optional: rentIncome,
+      });
       this.db
         .prepare(
-          "INSERT INTO transactions (id, business_id, project_id, name, invoice_id, date, amount_cents, type, primary_reference_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO transactions (id, business_id, project_id, property_id, name, invoice_id, date, amount_cents, type, primary_reference_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .run(
           id,
           user.business_id,
-          body.project_id,
+          body.project_id || null,
+          body.property_id || null,
           name,
           text(body.invoice_id, 200) || null,
           date,
@@ -710,7 +773,7 @@ export class FinanceStore {
   voidTransaction(user, id) {
     this.editor(user);
     const transaction = this.row("transactions", id, user);
-    this.project(user, transaction.project_id, true);
+    this.transactionAccess(user, transaction, true);
     requireThat(
       !this.db
         .prepare("SELECT 1 FROM payments WHERE transaction_id = ?")
@@ -736,8 +799,8 @@ export class FinanceStore {
       ? this.row("bills", occurrence.bill_id, user)
       : null;
     requireThat(tx || bill, "referenceTarget");
-    if (tx) this.project(user, tx.project_id, true);
-    if (bill) this.project(user, bill.project_id, true);
+    if (tx) this.transactionAccess(user, tx, true);
+    if (bill) this.billAccess(user, bill.id, true);
     if (tx && bill) {
       const payment = this.db
         .prepare("SELECT * FROM payments WHERE occurrence_id = ?")
@@ -745,7 +808,15 @@ export class FinanceStore {
       requireThat(payment?.transaction_id === tx.id, "referenceTarget");
     }
     return this.atomic(() => {
-      const id = this.referenceRaw(user, body, tx?.id, occurrence?.id);
+      const id = this.referenceRaw(user, body, tx?.id, occurrence?.id, {
+        receiptRequired: !isPropertyIncome(tx),
+      });
+      if (tx && !tx.primary_reference_id)
+        this.db
+          .prepare(
+            "UPDATE transactions SET primary_reference_id = ? WHERE id = ?",
+          )
+          .run(id, tx.id);
       this.audit(user, "reference.created", id);
       return { id };
     });
@@ -753,7 +824,7 @@ export class FinanceStore {
   occurrence(user, id, write = false) {
     const occurrence = this.row("bill_occurrences", id, user),
       bill = this.row("bills", occurrence.bill_id, user);
-    this.project(user, bill.project_id, write);
+    this.billAccess(user, bill.id, write);
     return { occurrence, bill };
   }
   createPayment(user, occurrenceId, body) {
@@ -825,12 +896,12 @@ export class FinanceStore {
       .run(id, occurrence.id);
     this.db
       .prepare(
-        "INSERT INTO transactions (id, business_id, project_id, name, date, amount_cents, type, primary_reference_id, created_by) VALUES (?, ?, ?, ?, ?, ?, 'expense', ?, ?)",
+        "INSERT INTO transactions (id, business_id, bill_id, name, date, amount_cents, type, primary_reference_id, created_by) VALUES (?, ?, ?, ?, ?, ?, 'expense', ?, ?)",
       )
       .run(
         id,
         user.business_id,
-        bill.project_id,
+        bill.id,
         bill.name,
         date,
         occurrence.amount_cents,
@@ -890,7 +961,8 @@ export class FinanceStore {
     const tx = transactionId
       ? this.row("transactions", transactionId, user)
       : null;
-    this.project(user, projectId || tx.project_id);
+    if (projectId) this.project(user, projectId);
+    else this.transactionAccess(user, tx);
     const content = requiredText(body.text, 5000);
     id ||= randomUUID();
     return this.atomic(() => {
@@ -916,9 +988,9 @@ export class FinanceStore {
   }
   referenceProject(user, reference) {
     if (reference.transaction_id)
-      return this.project(
+      return this.transactionAccess(
         user,
-        this.row("transactions", reference.transaction_id, user).project_id,
+        this.row("transactions", reference.transaction_id, user),
       );
     return this.occurrence(user, reference.occurrence_id).bill;
   }
@@ -944,8 +1016,13 @@ export class FinanceStore {
       (project) => user.role !== "employee" || assigned.has(project.id),
     );
     const projectIds = new Set(projects.map((project) => project.id));
-    const transactions = all("transactions").filter((transaction) =>
-      projectIds.has(transaction.project_id),
+    const properties = user.role === "employee" ? [] : all("properties");
+    const propertyIds = new Set(properties.map((property) => property.id));
+    const transactions = all("transactions").filter(
+      (transaction) =>
+        projectIds.has(transaction.project_id) ||
+        propertyIds.has(transaction.property_id) ||
+        (transaction.bill_id && user.role !== "employee"),
     );
     const transactionIds = new Set(
       transactions.map((transaction) => transaction.id),
@@ -954,7 +1031,7 @@ export class FinanceStore {
       all("bill_images").map((image) => image.bill_id),
     );
     const bills = all("bills")
-      .filter((bill) => projectIds.has(bill.project_id))
+      .filter(() => user.role !== "employee")
       .map((bill) => ({
         ...bill,
         image_url: imageBills.has(bill.id)
@@ -978,11 +1055,21 @@ export class FinanceStore {
                 : "upcoming",
       }));
     const occurrenceIds = new Set(occurrences.map((row) => row.id));
-    const references = all("evidence_references").filter(
-      (row) =>
-        transactionIds.has(row.transaction_id) ||
-        occurrenceIds.has(row.occurrence_id),
-    );
+    const references = all("evidence_references")
+      .filter(
+        (row) =>
+          transactionIds.has(row.transaction_id) ||
+          occurrenceIds.has(row.occurrence_id),
+      )
+      .map((reference) => ({
+        ...reference,
+        evidence_at: reference.evidence_at?.includes("T")
+          ? todayInZone(
+              this.business(user).time_zone,
+              new Date(reference.evidence_at),
+            )
+          : reference.evidence_at,
+      }));
     const referenceIds = new Set(references.map((row) => row.id));
     const contractors = all("contractors")
       .map((contractor) => ({
@@ -1025,19 +1112,7 @@ export class FinanceStore {
       const expenses = sum("expense"),
         income = sum("income"),
         refunds = sum("refund");
-      const projectBills = new Set(
-        bills
-          .filter((bill) => bill.project_id === project.id)
-          .map((bill) => bill.id),
-      );
-      const unpaid = occurrences
-        .filter(
-          (row) =>
-            projectBills.has(row.bill_id) &&
-            row.due_date <= addDays(today, 30) &&
-            ["unpaid", "processing"].includes(row.status),
-        )
-        .reduce((total, row) => total + row.amount_cents, 0);
+      const unpaid = 0;
       const available = project.budget_cents + income + refunds - expenses;
       return {
         ...project,
@@ -1072,6 +1147,7 @@ export class FinanceStore {
       today,
       month,
       projects: totals,
+      properties,
       transactions,
       bills,
       occurrences,

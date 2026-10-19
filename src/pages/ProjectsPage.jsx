@@ -9,7 +9,14 @@ import {
   PageTitle,
   Status,
 } from "../components/DomainUI.jsx";
-import SummaryCard from "../components/SummaryCard.jsx";
+import {
+  AddButton,
+  BalanceSummary,
+  DesktopIcon,
+  EntityRow,
+  PeriodControl,
+} from "../components/DesktopUI.jsx";
+import { TransactionEditor } from "../components/FinancialEditors.jsx";
 import { TransactionList } from "./TransactionsPage.jsx";
 
 const projectFields = [
@@ -32,7 +39,7 @@ export function ProjectEditor({ project, onClose }) {
       initial={
         project
           ? { ...project, budget: (project.budget_cents / 100).toFixed(2) }
-          : { start_date: data.today, status: "active" }
+          : { start_date: data.today, status: "active", budget: "0" }
       }
       fields={projectFields}
       onClose={onClose}
@@ -48,58 +55,40 @@ export function ProjectEditor({ project, onClose }) {
 }
 export function ProjectsPage() {
   const { t } = useLanguage(),
-    { data, editor, money, date } = useWorkspace();
-  const [editing, setEditing] = useState(null);
+    { data, editor } = useWorkspace();
+  const [editing, setEditing] = useState(null),
+    [creating, setCreating] = useState(false);
   return (
     <div className="pageStack">
       <PageTitle title="projects">
         {editor && (
-          <button className="primaryButton" onClick={() => setEditing({})}>
-            {t("newProject")}
-          </button>
+          <div className="buttonRow">
+            <AddButton
+              disabled={
+                !data.projects.some((item) => item.status !== "archived")
+              }
+              onClick={() => setCreating(true)}
+            >
+              {t("newTransaction")}
+            </AddButton>
+            <AddButton onClick={() => setEditing({})}>
+              {t("newProject")}
+            </AddButton>
+          </div>
         )}
       </PageTitle>
+      <PeriodControl />
       {!data.projects.length ? (
         <Empty />
       ) : (
-        <div className="projectGrid">
+        <div className="entityList">
           {data.projects.map((project) => (
-            <article key={project.id} className="contentSection projectCard">
-              <div className="sectionHeader">
-                <h2>
-                  <Link to={`/projects/${project.id}`}>{project.name}</Link>
-                </h2>
+            <div key={project.id}>
+              <EntityRow entity={project} />
+              <div className="entityStatus">
                 <Status value={project.status} />
               </div>
-              <p>
-                {date(project.start_date)}
-                {project.end_date && ` — ${date(project.end_date)}`}
-              </p>
-              <dl>
-                <div>
-                  <dt>{t("budget")}</dt>
-                  <dd>{money(project.budget_cents)}</dd>
-                </div>
-                <div>
-                  <dt>{t("availableBalance")}</dt>
-                  <dd className={project.available_cents < 0 ? "negative" : ""}>
-                    {money(project.available_cents)}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t("projectedBalance")}</dt>
-                  <dd>{money(project.projected_cents)}</dd>
-                </div>
-              </dl>
-              {editor && (
-                <button
-                  className="smallButton"
-                  onClick={() => setEditing(project)}
-                >
-                  {t("edit")}
-                </button>
-              )}
-            </article>
+            </div>
           ))}
         </div>
       )}
@@ -109,18 +98,24 @@ export function ProjectsPage() {
           onClose={() => setEditing(null)}
         />
       )}
+      {creating && (
+        <TransactionEditor
+          targetType="project"
+          onClose={() => setCreating(false)}
+        />
+      )}
     </div>
   );
 }
 export function ProjectDetails() {
   const { id } = useParams(),
     { t } = useLanguage(),
-    { data, editor, money, date } = useWorkspace();
+    { data, editor, date } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const project = data.projects.find((item) => item.id === id);
   if (!project) return <Empty />;
-  const contractors = data.contractors.filter((contractor) =>
-    contractor.project_ids.includes(id),
+  const contractors = data.contractors.filter((item) =>
+    item.project_ids.includes(id),
   );
   return (
     <div className="pageStack">
@@ -135,61 +130,39 @@ export function ProjectDetails() {
           <Status value={project.status} />
         </div>
         {editor && (
-          <button className="smallButton" onClick={() => setEditing(true)}>
+          <button
+            className="primaryButton desktopAction"
+            onClick={() => setEditing(true)}
+          >
             {t("editProject")}
+            <DesktopIcon name="edit" />
           </button>
         )}
       </header>
-      <div className="summaryGrid">
-        {[
-          ["budget", "budget_cents"],
-          ["availableBalance", "available_cents"],
-          ["expenses", "expense_cents"],
-          ["income", "income_cents"],
-          ["refunds", "refund_cents"],
-          ["projectedBalance", "projected_cents"],
-        ].map(([label, key]) => (
-          <SummaryCard
-            key={key}
-            label={t(label)}
-            value={money(project[key])}
-            tone={project[key] < 0 ? "danger" : "neutral"}
-          />
-        ))}
-      </div>
-      <p className="fieldHint">{t("balanceHint")}</p>
+      <PeriodControl />
+      <BalanceSummary
+        target="project_id"
+        id={id}
+        budget={project.budget_cents}
+      />
+      <p className="fieldHint">{t("projectBalanceHint")}</p>
+      <TransactionList projectId={id} columns />
       <section className="contentSection">
         <h2>{t("contractors")}</h2>
         {!contractors.length ? (
           <Empty />
         ) : (
           <div className="recordList">
-            {contractors.map((contractor) => (
-              <div className="listRow" key={contractor.id}>
-                <strong>{contractor.name}</strong>
-                <span>{contractor.email}</span>
-                <span>{contractor.phone}</span>
-                <span>{contractor.address}</span>
+            {contractors.map((item) => (
+              <div className="listRow" key={item.id}>
+                <strong>{item.name}</strong>
+                <span>{item.email}</span>
+                <span>{item.phone}</span>
               </div>
             ))}
           </div>
         )}
       </section>
-      <section className="contentSection">
-        <h2>{t("bills")}</h2>
-        {data.bills
-          .filter((bill) => bill.project_id === id)
-          .map((bill) => (
-            <div className="listRow" key={bill.id}>
-              <Link to="/bills">{bill.name}</Link>
-              <span>
-                {money(bill.amount_cents)} · {t(`statuses.${bill.recurrence}`)}
-              </span>
-              <Status value={bill.active ? "active" : "paused"} />
-            </div>
-          ))}
-      </section>
-      <TransactionList projectId={id} />
       <Comments projectId={id} />
       {editing && (
         <ProjectEditor project={project} onClose={() => setEditing(false)} />

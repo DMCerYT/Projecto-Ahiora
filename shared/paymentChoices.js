@@ -1,8 +1,5 @@
 // Use the current workspace so project access is inherited from the API's filtering.
 export function unpaidBillChoices(data) {
-  const projects = new Map(
-    data.projects.map((project) => [project.id, project]),
-  );
   const bills = new Map(data.bills.map((bill) => [bill.id, bill]));
   const payments = new Map(
     data.payments.map((payment) => [payment.occurrence_id, payment]),
@@ -10,16 +7,14 @@ export function unpaidBillChoices(data) {
   const choices = data.occurrences
     .flatMap((row) => {
       const bill = bills.get(row.bill_id),
-        project = projects.get(bill?.project_id),
         payment = payments.get(row.id);
       if (
         row.status !== "unpaid" ||
-        !project ||
-        project.status === "archived" ||
+        !bill ||
         (payment && payment.status !== "failed")
       )
         return [];
-      return [{ row, bill, project, payment }];
+      return [{ row, bill, payment }];
     })
     .sort(
       (a, b) =>

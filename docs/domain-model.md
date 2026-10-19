@@ -1,6 +1,6 @@
 # Domain model
 
-Contractors are external contacts, not users. Owner, Admin, and Employee are user roles; all employees report to the owner. Each user belongs to one business. References and payment states follow the agreed model, with a required primary reference enforcing the transaction's evidence relationship.
+Contractors are external contacts, not users. Owner, Admin, and Employee are user roles; all employees report to the owner. Each user belongs to one business. References and payment states follow the agreed model, with primary references required except for property income.
 
 ```mermaid
 classDiagram
@@ -15,8 +15,10 @@ classDiagram
     Business "1" -- "0..*" Project : manages
     Employee "0..*" -- "0..*" Project : assigned to
     Contractor "0..*" -- "0..*" Project : assigned to
-    Project "1" -- "0..*" Transaction : records
-    Project "1" -- "0..*" Bill : allocated to
+    Project "0..1" -- "0..*" Transaction : records
+    Business "1" -- "0..*" Property : manages
+    Property "0..1" -- "0..*" Transaction : records
+    Business "1" -- "0..*" Bill : manages
     Bill "1" -- "1..*" BillOccurrence : schedules
     Bill "1" -- "0..1" BillImage : illustrated by
     BillOccurrence "1" -- "0..1" Payment : settled by
@@ -24,7 +26,7 @@ classDiagram
     Business "1" -- "0..*" BillingAccount : maintains
     BillingAccount "1" -- "0..*" Payment : funds
     Bill "0..*" --> "0..1" BillingAccount : default account
-    Transaction "0..1" -- "1..*" Reference : supported by
+    Transaction "0..1" -- "0..*" Reference : supported by
     BillOccurrence "0..1" -- "0..*" Reference : evidenced by
     Reference "1" -- "0..*" FileAttachment : contains
     User "1" -- "0..*" Reference : records
@@ -50,7 +52,7 @@ classDiagram
         address
     }
     class Reference {
-        referenceNumber_optional
+        referenceNumber_required_except_property_income
         evidenceDateTime_optional
         description_optional
         createdAt
@@ -62,4 +64,8 @@ classDiagram
     }
 ```
 
-Additional constraints: a reference has at least one target and one piece of evidence; a comment has exactly one target. A processed payment has exactly one expense transaction; processing/failed payments have none. Shared transaction/occurrence references identify the same payment. Monetary storage uses cents; project balances are derived. The implementation uses role columns and assignment relations rather than separate Owner/Admin/Employee tables.
+Additional constraints: a reference has at least one target and requires a receipt ID except for property income; reference dates, notes and attachments are optional; a comment has exactly one target. A processed payment has exactly one expense transaction; processing/failed payments have none. Shared transaction/occurrence references identify the same payment. Monetary storage uses cents; project balances are derived. The implementation uses role columns and assignment relations rather than separate Owner/Admin/Employee tables.
+
+Manual transactions target exactly one project or property. Payment-generated expenses target their standalone bill instead and never affect project/property balances. Project budgets default to zero. Reporting supports YTD (default), this month, trailing three months, trailing twelve months, and lifetime; income and refunds remain distinct amounts. Team navigation is hidden; property and standalone bill records are visible to owners/admins only.
+
+Property income can be recorded with just amount and date, with an optional name defaulting to Rent income. Its primary reference is nullable; refund and expense evidence requirements remain unchanged. Reference dates contain no time for new records, and legacy timestamps are presented as business-local dates.
